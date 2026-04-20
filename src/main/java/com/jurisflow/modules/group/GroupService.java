@@ -2,6 +2,8 @@ package com.jurisflow.modules.group;
 
 import com.jurisflow.modules.group.dto.GroupRequest;
 import com.jurisflow.modules.group.dto.GroupResponse;
+import com.jurisflow.modules.processo.ProcessoRepository;
+import com.jurisflow.modules.processo.ProcessoStatus;
 import com.jurisflow.modules.user.UserRepository;
 import com.jurisflow.security.TenantContext;
 import com.jurisflow.security.UserPrincipal;
@@ -22,6 +24,7 @@ public class GroupService {
     private final GroupRepository groupRepository;
     private final GroupMemberRepository groupMemberRepository;
     private final UserRepository userRepository;
+    private final ProcessoRepository processoRepository;
 
     @Transactional
     public GroupResponse create(GroupRequest request, UserPrincipal principal) {
@@ -97,7 +100,8 @@ public class GroupService {
     }
 
     private GroupResponse toResponse(Group g) {
+        long total = processoRepository.countByGroupIdAndStatus(g.getId(), ProcessoStatus.ATIVO);
         return new GroupResponse(g.getId(), g.getTenantId(), g.getNome(),
-                g.getDescricao(), g.getCor(), g.getCreatedBy());
+                g.getDescricao(), g.getCor(), g.getCreatedBy(), total);
     }
 }

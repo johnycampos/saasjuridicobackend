@@ -21,6 +21,8 @@ public interface ProcessoRepository extends JpaRepository<Processo, UUID> {
 
     Optional<Processo> findByIdAndTenantId(UUID id, UUID tenantId);
 
+    long countByGroupIdAndStatus(UUID groupId, ProcessoStatus status);
+
     @Query("""
         SELECT p FROM Processo p
         WHERE p.tenantId = :tenantId

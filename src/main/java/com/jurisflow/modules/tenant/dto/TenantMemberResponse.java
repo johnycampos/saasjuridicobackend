@@ -1,5 +1,6 @@
 package com.jurisflow.modules.tenant.dto;
 
+import com.jurisflow.modules.tenant.TenantMemberStatus;
 import com.jurisflow.modules.tenant.TenantRole;
 
 import java.time.LocalDateTime;
@@ -12,5 +13,6 @@ public record TenantMemberResponse(
     String userNome,
     String userAvatarUrl,
     TenantRole role,
+    TenantMemberStatus status,
     LocalDateTime joinedAt
 ) {}

@@ -1,8 +1,10 @@
 package com.jurisflow.modules.tenant;
 
+import com.jurisflow.modules.tenant.dto.InviteMemberRequest;
 import com.jurisflow.modules.tenant.dto.TenantMemberResponse;
 import com.jurisflow.modules.tenant.dto.TenantRequest;
 import com.jurisflow.modules.tenant.dto.TenantResponse;
+import com.jurisflow.modules.user.User;
 import com.jurisflow.modules.user.UserRepository;
 import com.jurisflow.security.UserPrincipal;
 import com.jurisflow.shared.exception.BusinessException;
@@ -44,6 +46,7 @@ public class TenantService {
         owner.setTenantId(tenant.getId());
         owner.setUser(user);
         owner.setRole(TenantRole.OWNER);
+        owner.setStatus(TenantMemberStatus.ACTIVE);
         tenantMemberRepository.save(owner);
 
         return toResponse(tenant);
@@ -67,6 +70,43 @@ public class TenantService {
     public Page<TenantMemberResponse> getMembers(UUID tenantId, Pageable pageable) {
         return tenantMemberRepository.findByTenantIdAndAtivoTrue(tenantId, pageable)
                 .map(this::toMemberResponse);
+    }
+
+    @Transactional
+    public TenantMemberResponse addMemberByEmail(UUID tenantId, InviteMemberRequest request, UserPrincipal principal) {
+        requireMinRole(tenantId, principal.getId(), TenantRole.ADMIN);
+
+        String email = request.email().toLowerCase().trim();
+        TenantRole role = request.role() != null ? request.role() : TenantRole.MEMBER;
+
+        // Bloqueia se o usuário já é OWNER de algum tenant
+        if (tenantMemberRepository.existsByUser_EmailAndRoleAndAtivoTrue(email, TenantRole.OWNER)) {
+            throw new BusinessException("Este usuario ja possui um escritorio cadastrado e nao pode ser adicionado como membro");
+        }
+
+        // Busca ou cria o usuário placeholder
+        User user = userRepository.findByEmail(email)
+                .orElseGet(() -> {
+                    User placeholder = new User();
+                    placeholder.setEmail(email);
+                    placeholder.setNome(email.split("@")[0]);
+                    return userRepository.save(placeholder);
+                });
+
+        // Verifica se já é membro ativo
+        if (tenantMemberRepository.existsByTenantIdAndUser_IdAndAtivoTrue(tenantId, user.getId())) {
+            throw new BusinessException("Este usuario ja e membro deste escritorio");
+        }
+
+        TenantMember member = new TenantMember();
+        member.setTenantId(tenantId);
+        member.setUser(user);
+        member.setRole(role);
+        member.setStatus(TenantMemberStatus.PENDING);
+        member.setAtivo(true);
+        member = tenantMemberRepository.save(member);
+
+        return toMemberResponse(member);
     }
 
     @Transactional
@@ -130,6 +170,6 @@ public class TenantService {
     private TenantMemberResponse toMemberResponse(TenantMember tm) {
         var user = tm.getUser();
         return new TenantMemberResponse(tm.getId(), user.getId(), user.getEmail(),
-                user.getNome(), user.getAvatarUrl(), tm.getRole(), tm.getJoinedAt());
+                user.getNome(), user.getAvatarUrl(), tm.getRole(), tm.getStatus(), tm.getJoinedAt());
     }
 }

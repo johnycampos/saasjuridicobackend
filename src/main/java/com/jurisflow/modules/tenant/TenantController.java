@@ -1,5 +1,6 @@
 package com.jurisflow.modules.tenant;
 
+import com.jurisflow.modules.tenant.dto.InviteMemberRequest;
 import com.jurisflow.modules.tenant.dto.TenantMemberResponse;
 import com.jurisflow.modules.tenant.dto.TenantRequest;
 import com.jurisflow.modules.tenant.dto.TenantResponse;
@@ -50,6 +51,15 @@ public class TenantController {
             @PathVariable UUID id,
             @PageableDefault(size = 20) Pageable pageable) {
         return ResponseEntity.ok(tenantService.getMembers(id, pageable));
+    }
+
+    @PostMapping("/{id}/members")
+    public ResponseEntity<TenantMemberResponse> addMember(
+            @PathVariable UUID id,
+            @Valid @RequestBody InviteMemberRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(tenantService.addMemberByEmail(id, request, principal));
     }
 
     @PutMapping("/{id}/members/{userId}/role")

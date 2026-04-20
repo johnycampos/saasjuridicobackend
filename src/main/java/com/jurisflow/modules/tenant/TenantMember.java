@@ -26,8 +26,12 @@ public class TenantMember extends BaseEntity {
     @Column(nullable = false)
     private TenantRole role = TenantRole.MEMBER;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private TenantMemberStatus status = TenantMemberStatus.PENDING;
+
     private Boolean ativo = true;
 
     @Column(name = "joined_at")
-    private LocalDateTime joinedAt = LocalDateTime.now();
+    private LocalDateTime joinedAt;
 }

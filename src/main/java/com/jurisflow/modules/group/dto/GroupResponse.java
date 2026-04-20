@@ -8,5 +8,6 @@ public record GroupResponse(
     String nome,
     String descricao,
     String cor,
-    UUID createdBy
+    UUID createdBy,
+    long totalProcessos
 ) {}

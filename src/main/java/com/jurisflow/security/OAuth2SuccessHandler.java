@@ -1,6 +1,8 @@
 package com.jurisflow.security;
 
+import com.jurisflow.modules.tenant.TenantMember;
 import com.jurisflow.modules.tenant.TenantMemberRepository;
+import com.jurisflow.modules.tenant.TenantMemberStatus;
 import com.jurisflow.modules.user.User;
 import com.jurisflow.modules.user.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,6 +18,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Slf4j
 @Component
@@ -40,8 +43,6 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         String picture = oidcUser.getPicture();
         String googleSub = oidcUser.getSubject();
 
-        boolean[] isNew = {false};
-
         User user = userRepository.findByEmail(email)
                 .map(existing -> {
                     existing.setNome(name);
@@ -51,7 +52,6 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                     return userRepository.save(existing);
                 })
                 .orElseGet(() -> {
-                    isNew[0] = true;
                     User newUser = new User();
                     newUser.setEmail(email);
                     newUser.setNome(name);
@@ -60,9 +60,23 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                     return userRepository.save(newUser);
                 });
 
+        // Ativa memberships pendentes
+        List<TenantMember> pending = tenantMemberRepository
+                .findByUser_IdAndStatusAndAtivoTrue(user.getId(), TenantMemberStatus.PENDING);
+        if (!pending.isEmpty()) {
+            pending.forEach(tm -> {
+                tm.setStatus(TenantMemberStatus.ACTIVE);
+                tm.setJoinedAt(LocalDateTime.now());
+            });
+            tenantMemberRepository.saveAll(pending);
+        }
+
         String accessToken = tokenProvider.generateAccessToken(user.getId(), user.getEmail());
         String refreshToken = tokenProvider.generateRefreshToken(user.getId(), user.getEmail());
-        String redirectPath = isNew[0] ? "/onboarding" : "/dashboard";
+
+        // Se não tem nenhuma membership ativa, vai para onboarding
+        boolean hasActiveMembership = tenantMemberRepository.existsByUser_IdAndAtivoTrue(user.getId());
+        String redirectPath = hasActiveMembership ? "/dashboard" : "/onboarding";
 
         UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(frontendUrl + redirectPath)
                 .queryParam("token", accessToken)
@@ -71,8 +85,6 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         tenantMemberRepository.findFirstByUser_IdAndAtivoTrue(user.getId())
                 .ifPresent(tm -> uriBuilder.queryParam("tenantId", tm.getTenantId()));
 
-        String redirectUrl = uriBuilder.build().toUriString();
-
-        getRedirectStrategy().sendRedirect(request, response, redirectUrl);
+        getRedirectStrategy().sendRedirect(request, response, uriBuilder.build().toUriString());
     }
 }
