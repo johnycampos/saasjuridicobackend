@@ -3,10 +3,13 @@ spring:
     name: jurisflow-backend
 
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/jurisflow}
-    username: ${SPRING_DATASOURCE_USERNAME:jurisflow}
-    password: ${SPRING_DATASOURCE_PASSWORD:jurisflow}
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 3
+      minimum-idle: 1
 
   jpa:
     hibernate:
@@ -50,8 +53,22 @@ spring:
             enable: true
 
 server:
-  port: 8080
+  port: ${PORT:8080}
   forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+  health:
+    redis:
+      enabled: false
+    mail:
+      enabled: false
 
 app:
   jwt:
