@@ -3,10 +3,12 @@ package com.jurisflow.modules.board;
 import com.jurisflow.modules.board.dto.BoardColumnRequest;
 import com.jurisflow.modules.board.dto.BoardColumnResponse;
 import com.jurisflow.modules.board.dto.ReorderRequest;
+import com.jurisflow.security.UserPrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,8 +22,10 @@ public class BoardController {
     private final BoardService boardService;
 
     @GetMapping("/groups/{groupId}/board")
-    public ResponseEntity<List<BoardColumnResponse>> getBoardByGroup(@PathVariable UUID groupId) {
-        return ResponseEntity.ok(boardService.getBoardByGroup(groupId));
+    public ResponseEntity<List<BoardColumnResponse>> getBoardByGroup(
+            @PathVariable UUID groupId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(boardService.getBoardByGroup(groupId, principal.getId()));
     }
 
     @PostMapping("/board/columns")

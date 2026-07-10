@@ -1,9 +1,13 @@
 package com.jurisflow.modules.processo;
 
+import com.jurisflow.modules.cliente.Cliente;
 import com.jurisflow.modules.cliente.ClienteRepository;
+import com.jurisflow.modules.group.GroupService;
 import com.jurisflow.modules.processo.dto.MoveProcessoRequest;
 import com.jurisflow.modules.processo.dto.ProcessoRequest;
 import com.jurisflow.modules.processo.dto.ProcessoResponse;
+import com.jurisflow.modules.tarefa.TarefaResumo;
+import com.jurisflow.modules.tarefa.TarefaService;
 import com.jurisflow.security.TenantContext;
 import com.jurisflow.security.UserPrincipal;
 import com.jurisflow.shared.exception.BusinessException;
@@ -13,7 +17,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +30,8 @@ public class ProcessoService {
 
     private final ProcessoRepository processoRepository;
     private final ClienteRepository clienteRepository;
+    private final TarefaService tarefaService;
+    private final GroupService groupService;
 
     @Transactional
     public ProcessoResponse create(ProcessoRequest request, UserPrincipal principal) {
@@ -38,10 +48,8 @@ public class ProcessoService {
         processo.setComarca(request.comarca());
         processo.setTribunal(request.tribunal());
         processo.setReu(request.reu());
-        processo.setPrioridade(request.prioridade() != null ? request.prioridade() : PrioridadeTipo.MEDIA);
         processo.setValorCausa(request.valorCausa());
         processo.setDataDistribuicao(request.dataDistribuicao());
-        processo.setPrazoProximo(request.prazoProximo());
         processo.setGroupId(request.groupId());
         processo.setColumnId(request.columnId());
         processo.setCreatedBy(principal.getId());
@@ -49,28 +57,40 @@ public class ProcessoService {
         return toResponse(processoRepository.save(processo));
     }
 
-    public Page<ProcessoResponse> listByTenant(Pageable pageable) {
+    public Page<ProcessoResponse> listByTenant(Pageable pageable, UUID userId) {
         UUID tenantId = TenantContext.getCurrentTenantId();
-        return processoRepository.findByTenantIdAndStatus(tenantId, ProcessoStatus.ATIVO, pageable)
-                .map(this::toResponse);
+        var restriction = groupService.resolveGroupRestriction(tenantId, userId);
+
+        Page<Processo> page = restriction.isEmpty()
+                ? processoRepository.findByTenantIdAndStatus(tenantId, ProcessoStatus.ATIVO, pageable)
+                : processoRepository.findByTenantIdAndStatusAndGroupIdIn(tenantId, ProcessoStatus.ATIVO, restriction.get(), pageable);
+
+        return toResponsePage(page);
     }
 
-    public Page<ProcessoResponse> listByGroup(UUID groupId, Pageable pageable) {
+    public Page<ProcessoResponse> listByGroup(UUID groupId, Pageable pageable, UUID userId) {
         UUID tenantId = TenantContext.getCurrentTenantId();
-        return processoRepository.findByTenantIdAndGroupId(tenantId, groupId, pageable)
-                .map(this::toResponse);
+        requireGroupAccess(tenantId, userId, groupId);
+        return toResponsePage(processoRepository.findByTenantIdAndGroupId(tenantId, groupId, pageable));
     }
 
-    public Page<ProcessoResponse> search(String q, Pageable pageable) {
+    public Page<ProcessoResponse> search(String q, Pageable pageable, UUID userId) {
         UUID tenantId = TenantContext.getCurrentTenantId();
-        return processoRepository.search(tenantId, q, pageable).map(this::toResponse);
+        var restriction = groupService.resolveGroupRestriction(tenantId, userId);
+
+        Page<Processo> page = restriction.isEmpty()
+                ? processoRepository.search(tenantId, q, pageable)
+                : processoRepository.searchInGroups(tenantId, q, restriction.get(), pageable);
+
+        return toResponsePage(page);
     }
 
-    public ProcessoResponse getById(UUID id) {
+    public ProcessoResponse getById(UUID id, UUID userId) {
         UUID tenantId = TenantContext.getCurrentTenantId();
-        return processoRepository.findByIdAndTenantId(id, tenantId)
-                .map(this::toResponse)
+        Processo processo = processoRepository.findByIdAndTenantId(id, tenantId)
                 .orElseThrow(() -> BusinessException.notFound("Processo"));
+        requireGroupAccess(tenantId, userId, processo.getGroupId());
+        return toResponse(processo);
     }
 
     @Transactional
@@ -88,10 +108,8 @@ public class ProcessoService {
         processo.setComarca(request.comarca());
         processo.setTribunal(request.tribunal());
         processo.setReu(request.reu());
-        if (request.prioridade() != null) processo.setPrioridade(request.prioridade());
         processo.setValorCausa(request.valorCausa());
         processo.setDataDistribuicao(request.dataDistribuicao());
-        processo.setPrazoProximo(request.prazoProximo());
 
         return toResponse(processoRepository.save(processo));
     }
@@ -117,6 +135,13 @@ public class ProcessoService {
         processoRepository.save(processo);
     }
 
+    private void requireGroupAccess(UUID tenantId, UUID userId, UUID groupId) {
+        var restriction = groupService.resolveGroupRestriction(tenantId, userId);
+        if (restriction.isPresent() && !restriction.get().contains(groupId)) {
+            throw BusinessException.forbidden();
+        }
+    }
+
     private void validateClienteInTenant(UUID clienteId, UUID tenantId) {
         if (clienteId == null) return;
         clienteRepository.findByIdAndTenantId(clienteId, tenantId)
@@ -124,17 +149,39 @@ public class ProcessoService {
     }
 
     private ProcessoResponse toResponse(Processo p) {
-        String clienteNome = p.getClienteId() != null
-                ? clienteRepository.findById(p.getClienteId()).map(c -> c.getNome()).orElse(null)
-                : null;
+        String clienteNome = resolveClienteNome(p.getClienteId());
+        TarefaResumo resumo = tarefaService.resumoPorProcesso(List.of(p.getId()))
+                .getOrDefault(p.getId(), TarefaResumo.VAZIO);
+        return build(p, clienteNome, resumo);
+    }
 
+    private Page<ProcessoResponse> toResponsePage(Page<Processo> page) {
+        List<Processo> content = page.getContent();
+
+        var clienteIds = content.stream().map(Processo::getClienteId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<UUID, String> clienteNomes = clienteRepository.findAllById(clienteIds).stream()
+                .collect(Collectors.toMap(Cliente::getId, Cliente::getNome));
+
+        var resumos = tarefaService.resumoPorProcesso(content.stream().map(Processo::getId).toList());
+
+        return page.map(p -> build(p, clienteNomes.get(p.getClienteId()), resumos.getOrDefault(p.getId(), TarefaResumo.VAZIO)));
+    }
+
+    private String resolveClienteNome(UUID clienteId) {
+        return clienteId != null
+                ? clienteRepository.findById(clienteId).map(Cliente::getNome).orElse(null)
+                : null;
+    }
+
+    private ProcessoResponse build(Processo p, String clienteNome, TarefaResumo resumo) {
         return new ProcessoResponse(
                 p.getId(), p.getTenantId(), p.getGroupId(), p.getColumnId(),
                 p.getClienteId(), clienteNome,
                 p.getDescricao(), p.getNumeroProcesso(), p.getTipoAcao(),
                 p.getVara(), p.getComarca(), p.getTribunal(), p.getReu(),
-                p.getPrioridade(), p.getStatus(), p.getValorCausa(), p.getDataDistribuicao(),
-                p.getPrazoProximo(), p.getPosicaoColuna(), p.getCreatedBy(),
+                p.getStatus(), p.getValorCausa(), p.getDataDistribuicao(),
+                resumo.prazo(), resumo.prioridade(),
+                p.getPosicaoColuna(), p.getCreatedBy(),
                 p.getCreatedAt(), p.getUpdatedAt()
         );
     }

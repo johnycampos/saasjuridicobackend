@@ -27,14 +27,15 @@ public class ProcessoController {
     public ResponseEntity<Page<ProcessoResponse>> list(
             @RequestParam(required = false) UUID groupId,
             @RequestParam(required = false) String q,
-            @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
+            @PageableDefault(size = 20, sort = "createdAt") Pageable pageable,
+            @AuthenticationPrincipal UserPrincipal principal) {
         if (q != null && !q.isBlank()) {
-            return ResponseEntity.ok(processoService.search(q, pageable));
+            return ResponseEntity.ok(processoService.search(q, pageable, principal.getId()));
         }
         if (groupId != null) {
-            return ResponseEntity.ok(processoService.listByGroup(groupId, pageable));
+            return ResponseEntity.ok(processoService.listByGroup(groupId, pageable, principal.getId()));
         }
-        return ResponseEntity.ok(processoService.listByTenant(pageable));
+        return ResponseEntity.ok(processoService.listByTenant(pageable, principal.getId()));
     }
 
     @PostMapping
@@ -46,8 +47,10 @@ public class ProcessoController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ProcessoResponse> getById(@PathVariable UUID id) {
-        return ResponseEntity.ok(processoService.getById(id));
+    public ResponseEntity<ProcessoResponse> getById(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(processoService.getById(id, principal.getId()));
     }
 
     @PutMapping("/{id}")

@@ -5,15 +5,20 @@ import com.jurisflow.modules.board.dto.BoardColumnResponse;
 import com.jurisflow.modules.board.dto.ReorderRequest;
 import com.jurisflow.modules.cliente.Cliente;
 import com.jurisflow.modules.cliente.ClienteRepository;
+import com.jurisflow.modules.group.GroupService;
 import com.jurisflow.modules.processo.Processo;
 import com.jurisflow.modules.processo.ProcessoRepository;
 import com.jurisflow.modules.processo.dto.ProcessoResponse;
+import com.jurisflow.modules.tarefa.TarefaResumo;
+import com.jurisflow.modules.tarefa.TarefaService;
 import com.jurisflow.security.TenantContext;
 import com.jurisflow.shared.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,8 +35,16 @@ public class BoardService {
     private final BoardColumnRepository columnRepository;
     private final ProcessoRepository processoRepository;
     private final ClienteRepository clienteRepository;
+    private final TarefaService tarefaService;
+    private final GroupService groupService;
 
-    public List<BoardColumnResponse> getBoardByGroup(UUID groupId) {
+    public List<BoardColumnResponse> getBoardByGroup(UUID groupId, UUID userId) {
+        UUID tenantId = TenantContext.getCurrentTenantId();
+        var restriction = groupService.resolveGroupRestriction(tenantId, userId);
+        if (restriction.isPresent() && !restriction.get().contains(groupId)) {
+            throw BusinessException.forbidden();
+        }
+
         List<BoardColumn> cols = columnRepository.findByGroupIdOrderByPosicaoAsc(groupId);
 
         Map<UUID, List<Processo>> processosByColumn = new LinkedHashMap<>();
@@ -47,18 +60,37 @@ public class BoardService {
         Map<UUID, String> clienteNomes = clienteRepository.findAllById(clienteIds).stream()
                 .collect(Collectors.toMap(Cliente::getId, Cliente::getNome));
 
+        List<UUID> processoIds = processosByColumn.values().stream()
+                .flatMap(List::stream).map(Processo::getId).toList();
+        Map<UUID, TarefaResumo> resumos = tarefaService.resumoPorProcesso(processoIds);
+
+        Comparator<Processo> porUrgencia = Comparator
+                .comparing((Processo p) -> {
+                    var prioridade = resumos.getOrDefault(p.getId(), TarefaResumo.VAZIO).prioridade();
+                    return prioridade != null ? prioridade.ordinal() : -1;
+                })
+                .reversed()
+                .thenComparing(p -> {
+                    var prazo = resumos.getOrDefault(p.getId(), TarefaResumo.VAZIO).prazo();
+                    return prazo != null ? prazo : LocalDate.MAX;
+                });
+
         return cols.stream()
                 .map(col -> {
-                    var processos = processosByColumn.get(col.getId())
-                            .stream()
-                            .map(p -> new ProcessoResponse(
-                                    p.getId(), p.getTenantId(), p.getGroupId(), p.getColumnId(),
-                                    p.getClienteId(), clienteNomes.get(p.getClienteId()),
-                                    p.getDescricao(), p.getNumeroProcesso(), p.getTipoAcao(),
-                                    p.getVara(), p.getComarca(), p.getTribunal(), p.getReu(),
-                                    p.getPrioridade(), p.getStatus(), p.getValorCausa(), p.getDataDistribuicao(),
-                                    p.getPrazoProximo(), p.getPosicaoColuna(), p.getCreatedBy(),
-                                    p.getCreatedAt(), p.getUpdatedAt()))
+                    var processos = processosByColumn.get(col.getId()).stream()
+                            .sorted(porUrgencia)
+                            .map(p -> {
+                                var resumo = resumos.getOrDefault(p.getId(), TarefaResumo.VAZIO);
+                                return new ProcessoResponse(
+                                        p.getId(), p.getTenantId(), p.getGroupId(), p.getColumnId(),
+                                        p.getClienteId(), clienteNomes.get(p.getClienteId()),
+                                        p.getDescricao(), p.getNumeroProcesso(), p.getTipoAcao(),
+                                        p.getVara(), p.getComarca(), p.getTribunal(), p.getReu(),
+                                        p.getStatus(), p.getValorCausa(), p.getDataDistribuicao(),
+                                        resumo.prazo(), resumo.prioridade(),
+                                        p.getPosicaoColuna(), p.getCreatedBy(),
+                                        p.getCreatedAt(), p.getUpdatedAt());
+                            })
                             .toList();
                     return new BoardColumnResponse(col.getId(), col.getTenantId(), col.getGroupId(),
                             col.getNome(), col.getPosicao(), col.getCor(), processos);

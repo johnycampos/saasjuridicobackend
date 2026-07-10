@@ -6,6 +6,8 @@ import com.jurisflow.modules.group.dto.GroupRequest;
 import com.jurisflow.modules.group.dto.GroupResponse;
 import com.jurisflow.modules.processo.ProcessoRepository;
 import com.jurisflow.modules.processo.ProcessoStatus;
+import com.jurisflow.modules.tenant.TenantMemberRepository;
+import com.jurisflow.modules.tenant.TenantRole;
 import com.jurisflow.modules.user.UserRepository;
 import com.jurisflow.security.TenantContext;
 import com.jurisflow.security.UserPrincipal;
@@ -16,7 +18,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +33,7 @@ public class GroupService {
     private final UserRepository userRepository;
     private final ProcessoRepository processoRepository;
     private final BoardColumnRepository boardColumnRepository;
+    private final TenantMemberRepository tenantMemberRepository;
 
     @Transactional
     public GroupResponse create(GroupRequest request, UserPrincipal principal) {
@@ -99,6 +105,26 @@ public class GroupService {
     public void removeMember(UUID groupId, UUID userId) {
         findGroupInTenant(groupId);
         groupMemberRepository.deleteByGroupIdAndUser_Id(groupId, userId);
+    }
+
+    /**
+     * ADMIN/OWNER veem tudo (retorna Optional vazio = sem restricao).
+     * MEMBER/VIEWER so veem os grupos aos quais pertencem (retorna o
+     * conjunto de group ids permitidos, possivelmente vazio).
+     */
+    public Optional<Set<UUID>> resolveGroupRestriction(UUID tenantId, UUID userId) {
+        TenantRole role = tenantMemberRepository.findByTenantIdAndUser_Id(tenantId, userId)
+                .map(tm -> tm.getRole())
+                .orElse(TenantRole.VIEWER);
+
+        if (role == TenantRole.OWNER || role == TenantRole.ADMIN) {
+            return Optional.empty();
+        }
+
+        Set<UUID> groupIds = groupRepository.findByTenantIdAndMember(tenantId, userId).stream()
+                .map(Group::getId)
+                .collect(Collectors.toSet());
+        return Optional.of(groupIds);
     }
 
     private Group findGroupInTenant(UUID groupId) {

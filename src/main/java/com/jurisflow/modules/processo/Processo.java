@@ -7,7 +7,6 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Getter
@@ -40,9 +39,6 @@ public class Processo extends TenantEntity {
     private String reu;
 
     @Enumerated(EnumType.STRING)
-    private PrioridadeTipo prioridade = PrioridadeTipo.MEDIA;
-
-    @Enumerated(EnumType.STRING)
     private ProcessoStatus status = ProcessoStatus.ATIVO;
 
     @Column(name = "valor_causa")
@@ -50,9 +46,6 @@ public class Processo extends TenantEntity {
 
     @Column(name = "data_distribuicao")
     private LocalDate dataDistribuicao;
-
-    @Column(name = "prazo_proximo")
-    private LocalDateTime prazoProximo;
 
     @Column(name = "posicao_coluna")
     private Integer posicaoColuna = 0;
