@@ -1,5 +1,7 @@
 package com.jurisflow.modules.group;
 
+import com.jurisflow.modules.board.BoardColumn;
+import com.jurisflow.modules.board.BoardColumnRepository;
 import com.jurisflow.modules.group.dto.GroupRequest;
 import com.jurisflow.modules.group.dto.GroupResponse;
 import com.jurisflow.modules.processo.ProcessoRepository;
@@ -25,6 +27,7 @@ public class GroupService {
     private final GroupMemberRepository groupMemberRepository;
     private final UserRepository userRepository;
     private final ProcessoRepository processoRepository;
+    private final BoardColumnRepository boardColumnRepository;
 
     @Transactional
     public GroupResponse create(GroupRequest request, UserPrincipal principal) {
@@ -46,6 +49,13 @@ public class GroupService {
         leader.setUser(user);
         leader.setRole(GroupRole.LEADER);
         groupMemberRepository.save(leader);
+
+        BoardColumn defaultColumn = new BoardColumn();
+        defaultColumn.setTenantId(tenantId);
+        defaultColumn.setGroupId(group.getId());
+        defaultColumn.setNome("Geral");
+        defaultColumn.setPosicao(0);
+        boardColumnRepository.save(defaultColumn);
 
         return toResponse(group);
     }
