@@ -25,8 +25,8 @@ public class Processo extends TenantEntity {
     @Column(name = "numero_processo")
     private String numeroProcesso;
 
-    @Column(nullable = false)
-    private String titulo;
+    @Column(name = "cliente_id")
+    private UUID clienteId;
 
     @Column(columnDefinition = "TEXT")
     private String descricao;
@@ -37,7 +37,6 @@ public class Processo extends TenantEntity {
     private String vara;
     private String comarca;
     private String tribunal;
-    private String autor;
     private String reu;
 
     @Enumerated(EnumType.STRING)

@@ -27,10 +27,12 @@ public interface ProcessoRepository extends JpaRepository<Processo, UUID> {
         SELECT p FROM Processo p
         WHERE p.tenantId = :tenantId
         AND (
-            LOWER(p.titulo) LIKE LOWER(CONCAT('%', :q, '%'))
-            OR LOWER(p.numeroProcesso) LIKE LOWER(CONCAT('%', :q, '%'))
-            OR LOWER(p.autor) LIKE LOWER(CONCAT('%', :q, '%'))
+            LOWER(p.numeroProcesso) LIKE LOWER(CONCAT('%', :q, '%'))
             OR LOWER(p.reu) LIKE LOWER(CONCAT('%', :q, '%'))
+            OR EXISTS (
+                SELECT 1 FROM Cliente c
+                WHERE c.id = p.clienteId AND LOWER(c.nome) LIKE LOWER(CONCAT('%', :q, '%'))
+            )
         )
     """)
     Page<Processo> search(UUID tenantId, String q, Pageable pageable);

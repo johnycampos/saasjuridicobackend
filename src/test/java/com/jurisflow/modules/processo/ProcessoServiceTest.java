@@ -1,5 +1,6 @@
 package com.jurisflow.modules.processo;
 
+import com.jurisflow.modules.cliente.ClienteRepository;
 import com.jurisflow.modules.processo.dto.MoveProcessoRequest;
 import com.jurisflow.modules.processo.dto.ProcessoRequest;
 import com.jurisflow.modules.processo.dto.ProcessoResponse;
@@ -31,6 +32,9 @@ class ProcessoServiceTest {
     @Mock
     private ProcessoRepository processoRepository;
 
+    @Mock
+    private ClienteRepository clienteRepository;
+
     @InjectMocks
     private ProcessoService processoService;
 
@@ -52,14 +56,14 @@ class ProcessoServiceTest {
     @Test
     void create_shouldSaveProcessoWithTenantIdAndCreatedBy() {
         ProcessoRequest request = new ProcessoRequest(
-                "Processo de Teste", "Descricao", "123", "Civel",
-                "1a Vara", "SP", "TJSP", "Autor", "Reu",
+                null, "Descricao", "123", "Civel",
+                "1a Vara", "SP", "TJSP", "Reu",
                 PrioridadeTipo.ALTA, null, null, null, null, null
         );
 
         Processo saved = new Processo();
         saved.setTenantId(tenantId);
-        saved.setTitulo("Processo de Teste");
+        saved.setNumeroProcesso("123");
         saved.setPrioridade(PrioridadeTipo.ALTA);
         saved.setStatus(ProcessoStatus.ATIVO);
         saved.setCreatedBy(userId);
@@ -69,12 +73,12 @@ class ProcessoServiceTest {
         ProcessoResponse response = processoService.create(request, principal);
 
         assertThat(response).isNotNull();
-        assertThat(response.titulo()).isEqualTo("Processo de Teste");
+        assertThat(response.numeroProcesso()).isEqualTo("123");
         assertThat(response.tenantId()).isEqualTo(tenantId);
 
         verify(processoRepository).save(argThat(p ->
                 p.getTenantId().equals(tenantId) &&
-                p.getTitulo().equals("Processo de Teste") &&
+                "123".equals(p.getNumeroProcesso()) &&
                 p.getCreatedBy().equals(userId) &&
                 p.getPrioridade() == PrioridadeTipo.ALTA
         ));
@@ -83,13 +87,12 @@ class ProcessoServiceTest {
     @Test
     void create_shouldUseDefaultPriority_whenPriorityIsNull() {
         ProcessoRequest request = new ProcessoRequest(
-                "Processo", null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null
         );
 
         Processo saved = new Processo();
         saved.setTenantId(tenantId);
-        saved.setTitulo("Processo");
         saved.setPrioridade(PrioridadeTipo.MEDIA);
         saved.setStatus(ProcessoStatus.ATIVO);
 
@@ -105,14 +108,14 @@ class ProcessoServiceTest {
         UUID processoId = UUID.randomUUID();
         Processo processo = new Processo();
         processo.setTenantId(tenantId);
-        processo.setTitulo("Encontrado");
+        processo.setNumeroProcesso("Encontrado");
         processo.setStatus(ProcessoStatus.ATIVO);
 
         when(processoRepository.findByIdAndTenantId(processoId, tenantId))
                 .thenReturn(Optional.of(processo));
 
         ProcessoResponse response = processoService.getById(processoId);
-        assertThat(response.titulo()).isEqualTo("Encontrado");
+        assertThat(response.numeroProcesso()).isEqualTo("Encontrado");
     }
 
     @Test
@@ -132,7 +135,7 @@ class ProcessoServiceTest {
     void listByTenant_shouldFilterByStatusAtivo() {
         Processo p = new Processo();
         p.setTenantId(tenantId);
-        p.setTitulo("Ativo");
+        p.setNumeroProcesso("Ativo");
         p.setStatus(ProcessoStatus.ATIVO);
 
         when(processoRepository.findByTenantIdAndStatus(eq(tenantId), eq(ProcessoStatus.ATIVO), any(Pageable.class)))
@@ -141,7 +144,7 @@ class ProcessoServiceTest {
         var page = processoService.listByTenant(Pageable.unpaged());
 
         assertThat(page.getContent()).hasSize(1);
-        assertThat(page.getContent().get(0).titulo()).isEqualTo("Ativo");
+        assertThat(page.getContent().get(0).numeroProcesso()).isEqualTo("Ativo");
     }
 
     @Test
