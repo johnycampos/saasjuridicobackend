@@ -22,6 +22,10 @@ public interface ProcessoRepository extends JpaRepository<Processo, UUID> {
 
     Page<Processo> findByTenantIdAndGroupId(UUID tenantId, UUID groupId, Pageable pageable);
 
+    List<Processo> findByTenantIdAndClienteId(UUID tenantId, UUID clienteId);
+
+    List<Processo> findByTenantIdAndClienteIdAndGroupIdIn(UUID tenantId, UUID clienteId, Collection<UUID> groupIds);
+
     Optional<Processo> findByIdAndTenantId(UUID id, UUID tenantId);
 
     long countByGroupIdAndStatus(UUID groupId, ProcessoStatus status);
