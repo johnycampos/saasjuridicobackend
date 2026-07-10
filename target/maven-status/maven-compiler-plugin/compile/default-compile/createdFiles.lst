@@ -51,11 +51,14 @@ com/jurisflow/modules/tarefa/dto/TarefaResponse.class
 com/jurisflow/modules/board/BoardColumn.class
 com/jurisflow/modules/financeiro/ParcelaRepository.class
 com/jurisflow/modules/auth/dto/RefreshTokenRequest.class
+com/jurisflow/modules/dashboard/DashboardService.class
+com/jurisflow/modules/dashboard/DashboardController.class
 com/jurisflow/modules/processo/dto/MoveProcessoRequest.class
 com/jurisflow/modules/group/GroupRole.class
 com/jurisflow/modules/board/BoardColumnRepository.class
 com/jurisflow/security/UserPrincipal.class
 com/jurisflow/modules/user/UserRepository.class
+com/jurisflow/modules/dashboard/DashboardService$ProximoPrazo.class
 com/jurisflow/modules/processo/Processo.class
 com/jurisflow/modules/cliente/dto/ClienteRequest.class
 com/jurisflow/modules/financeiro/ContratoRepository.class
@@ -69,6 +72,7 @@ com/jurisflow/modules/processo/dto/ProcessoResponse.class
 com/jurisflow/modules/tenant/dto/TenantRequest.class
 com/jurisflow/modules/group/GroupController.class
 com/jurisflow/modules/tenant/dto/TenantResponse.class
+com/jurisflow/modules/dashboard/dto/DashboardResumoResponse.class
 com/jurisflow/modules/processolink/dto/ProcessoLinkRequest.class
 com/jurisflow/modules/tarefa/TarefaResumo.class
 com/jurisflow/security/TenantContext.class

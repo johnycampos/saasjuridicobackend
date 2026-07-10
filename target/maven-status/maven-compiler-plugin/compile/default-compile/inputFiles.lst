@@ -27,6 +27,7 @@
 /app/src/main/java/com/jurisflow/modules/cliente/ClienteController.java
 /app/src/main/java/com/jurisflow/modules/tenant/TenantMemberRepository.java
 /app/src/main/java/com/jurisflow/modules/board/BoardColumnRepository.java
+/app/src/main/java/com/jurisflow/modules/dashboard/dto/DashboardResumoResponse.java
 /app/src/main/java/com/jurisflow/modules/auth/dto/RefreshTokenRequest.java
 /app/src/main/java/com/jurisflow/modules/processo/ProcessoStatus.java
 /app/src/main/java/com/jurisflow/modules/tenant/TenantService.java
@@ -50,6 +51,7 @@
 /app/src/main/java/com/jurisflow/modules/processo/dto/MoveProcessoRequest.java
 /app/src/main/java/com/jurisflow/modules/processo/Processo.java
 /app/src/main/java/com/jurisflow/modules/group/GroupController.java
+/app/src/main/java/com/jurisflow/modules/dashboard/DashboardService.java
 /app/src/main/java/com/jurisflow/modules/tenant/TenantMember.java
 /app/src/main/java/com/jurisflow/modules/processolink/ProcessoLinkController.java
 /app/src/main/java/com/jurisflow/modules/processo/ProcessoRepository.java
@@ -72,6 +74,7 @@
 /app/src/main/java/com/jurisflow/modules/tribunal/Tribunal.java
 /app/src/main/java/com/jurisflow/modules/group/GroupRole.java
 /app/src/main/java/com/jurisflow/modules/processolink/ProcessoLink.java
+/app/src/main/java/com/jurisflow/modules/dashboard/DashboardController.java
 /app/src/main/java/com/jurisflow/security/TenantContext.java
 /app/src/main/java/com/jurisflow/security/JwtTokenProvider.java
 /app/src/main/java/com/jurisflow/modules/tarefa/TarefaController.java

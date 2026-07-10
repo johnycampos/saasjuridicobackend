@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.jurisflow.modules.processo.ProcessoServiceTest
 -------------------------------------------------------------------------------
-Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 7.173 s -- in com.jurisflow.modules.processo.ProcessoServiceTest
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 7.767 s -- in com.jurisflow.modules.processo.ProcessoServiceTest
