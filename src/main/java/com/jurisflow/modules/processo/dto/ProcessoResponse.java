@@ -20,6 +20,7 @@ public record ProcessoResponse(
     String tipoAcao,
     String vara,
     String comarca,
+    String estado,
     String tribunal,
     String reu,
     ProcessoStatus status,

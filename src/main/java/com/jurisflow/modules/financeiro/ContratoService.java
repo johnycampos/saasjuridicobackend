@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -143,9 +144,16 @@ public class ContratoService {
     }
 
     private ContratoResponse toResponse(Contrato c) {
-        List<ParcelaResponse> parcelas = parcelaRepository.findByContratoIdOrderByNumeroAsc(c.getId())
-                .stream().map(this::toParcelaResponse).toList();
-        return new ContratoResponse(c.getId(), c.getTenantId(), c.getProcessoId(), c.getValorTotal(),
+        List<Parcela> parcelasEntities = parcelaRepository.findByContratoIdOrderByNumeroAsc(c.getId());
+        List<ParcelaResponse> parcelas = parcelasEntities.stream().map(this::toParcelaResponse).toList();
+
+        BigDecimal totalPago = parcelasEntities.stream()
+                .filter(p -> p.getStatus() == ParcelaStatus.PAGO)
+                .map(Parcela::getValor)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal saldoRestante = c.getValorTotal().subtract(totalPago);
+
+        return new ContratoResponse(c.getId(), c.getTenantId(), c.getProcessoId(), c.getValorTotal(), saldoRestante,
                 c.getObservacoes(), c.getCreatedBy(), c.getCreatedAt(), c.getUpdatedAt(), parcelas);
     }
 

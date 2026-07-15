@@ -46,6 +46,7 @@ public class ProcessoService {
         processo.setTipoAcao(request.tipoAcao());
         processo.setVara(request.vara());
         processo.setComarca(request.comarca());
+        processo.setEstado(request.estado());
         processo.setTribunal(request.tribunal());
         processo.setReu(request.reu());
         processo.setValorCausa(request.valorCausa());
@@ -106,6 +107,7 @@ public class ProcessoService {
         processo.setTipoAcao(request.tipoAcao());
         processo.setVara(request.vara());
         processo.setComarca(request.comarca());
+        processo.setEstado(request.estado());
         processo.setTribunal(request.tribunal());
         processo.setReu(request.reu());
         processo.setValorCausa(request.valorCausa());
@@ -178,7 +180,7 @@ public class ProcessoService {
                 p.getId(), p.getTenantId(), p.getGroupId(), p.getColumnId(),
                 p.getClienteId(), clienteNome,
                 p.getDescricao(), p.getNumeroProcesso(), p.getTipoAcao(),
-                p.getVara(), p.getComarca(), p.getTribunal(), p.getReu(),
+                p.getVara(), p.getComarca(), p.getEstado(), p.getTribunal(), p.getReu(),
                 p.getStatus(), p.getValorCausa(), p.getDataDistribuicao(),
                 resumo.prazo(), resumo.prioridade(),
                 p.getPosicaoColuna(), p.getCreatedBy(),

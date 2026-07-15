@@ -68,7 +68,7 @@ class ProcessoServiceTest {
     void create_shouldSaveProcessoWithTenantIdAndCreatedBy() {
         ProcessoRequest request = new ProcessoRequest(
                 null, "Descricao", "123", "Civel",
-                "1a Vara", "SP", "TJSP", "Reu",
+                "1a Vara", "SP", "Sao Paulo", "TJSP", "Reu",
                 null, null, null, null
         );
 

@@ -35,6 +35,7 @@ public class Processo extends TenantEntity {
 
     private String vara;
     private String comarca;
+    private String estado;
     private String tribunal;
     private String reu;
 

@@ -15,6 +15,7 @@ public record ProcessoRequest(
     String tipoAcao,
     String vara,
     String comarca,
+    String estado,
     String tribunal,
     String reu,
     BigDecimal valorCausa,

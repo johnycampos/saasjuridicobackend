@@ -10,6 +10,7 @@ public record ContratoResponse(
     UUID tenantId,
     UUID processoId,
     BigDecimal valorTotal,
+    BigDecimal saldoRestante,
     String observacoes,
     UUID createdBy,
     LocalDateTime createdAt,
