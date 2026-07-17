@@ -35,6 +35,11 @@ spring:
             scope: openid,profile,email
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
 
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
   data:
     redis:
       host: ${SPRING_REDIS_HOST:localhost}

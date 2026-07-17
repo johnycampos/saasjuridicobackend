@@ -16,4 +16,6 @@ public interface ClienteRepository extends JpaRepository<Cliente, UUID> {
     Page<Cliente> findByTenantIdAndNomeContainingIgnoreCaseOrderByNomeAsc(UUID tenantId, String nome, Pageable pageable);
 
     Optional<Cliente> findByIdAndTenantId(UUID id, UUID tenantId);
+
+    Optional<Cliente> findByTenantIdAndNomeIgnoreCase(UUID tenantId, String nome);
 }

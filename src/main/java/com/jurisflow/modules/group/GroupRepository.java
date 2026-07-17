@@ -7,12 +7,14 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface GroupRepository extends JpaRepository<Group, UUID> {
     Page<Group> findByTenantId(UUID tenantId, Pageable pageable);
     List<Group> findByTenantId(UUID tenantId);
+    Optional<Group> findByIdAndTenantId(UUID id, UUID tenantId);
 
     @Query("""
         SELECT g FROM Group g
