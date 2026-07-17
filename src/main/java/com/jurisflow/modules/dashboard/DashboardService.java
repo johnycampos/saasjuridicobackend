@@ -2,6 +2,7 @@ package com.jurisflow.modules.dashboard;
 
 import com.jurisflow.modules.cliente.Cliente;
 import com.jurisflow.modules.cliente.ClienteRepository;
+import com.jurisflow.modules.dashboard.dto.AgendaTarefaResponse;
 import com.jurisflow.modules.dashboard.dto.AniversarianteResponse;
 import com.jurisflow.modules.dashboard.dto.DashboardResumoResponse;
 import com.jurisflow.modules.financeiro.Contrato;
@@ -13,6 +14,7 @@ import com.jurisflow.modules.group.GroupService;
 import com.jurisflow.modules.processo.Processo;
 import com.jurisflow.modules.processo.ProcessoRepository;
 import com.jurisflow.modules.processo.ProcessoStatus;
+import com.jurisflow.modules.tarefa.Tarefa;
 import com.jurisflow.modules.tarefa.TarefaResumo;
 import com.jurisflow.modules.tarefa.TarefaService;
 import com.jurisflow.security.TenantContext;
@@ -23,9 +25,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -59,6 +64,34 @@ public class DashboardService {
                 prazo.processoId(), prazo.numeroProcesso(), prazo.clienteNome(), prazo.data(), valorPago,
                 aniversariantes
         );
+    }
+
+    public List<AgendaTarefaResponse> getAgendaSemana(UserPrincipal principal) {
+        UUID tenantId = TenantContext.getCurrentTenantId();
+        var restriction = groupService.resolveGroupRestriction(tenantId, principal.getId());
+
+        LocalDate hoje = LocalDate.now();
+        LocalDate inicio = hoje.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY));
+        LocalDate fim = inicio.plusDays(6);
+
+        List<Tarefa> tarefas = tarefaService.listAgendaSemana(inicio, fim, restriction);
+
+        var processoIds = tarefas.stream().map(Tarefa::getProcessoId).collect(Collectors.toSet());
+        Map<UUID, Processo> processosPorId = processoRepository.findAllById(processoIds).stream()
+                .collect(Collectors.toMap(Processo::getId, p -> p));
+
+        var clienteIds = processosPorId.values().stream().map(Processo::getClienteId)
+                .filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<UUID, String> clienteNomes = clienteRepository.findAllById(clienteIds).stream()
+                .collect(Collectors.toMap(Cliente::getId, Cliente::getNome));
+
+        return tarefas.stream().map(t -> {
+            Processo p = processosPorId.get(t.getProcessoId());
+            String numero = p != null ? p.getNumeroProcesso() : null;
+            String clienteNome = p != null && p.getClienteId() != null ? clienteNomes.get(p.getClienteId()) : null;
+            return new AgendaTarefaResponse(t.getId(), t.getProcessoId(), numero, clienteNome,
+                    t.getTitulo(), t.getPrioridade(), t.getPrazo());
+        }).toList();
     }
 
     private List<AniversarianteResponse> calcularAniversariantesDoMes(UUID tenantId) {

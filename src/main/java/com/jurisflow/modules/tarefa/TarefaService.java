@@ -11,12 +11,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -79,6 +82,13 @@ public class TarefaService {
                             .max(Comparator.comparingInt(Enum::ordinal)).orElse(null);
                     return new TarefaResumo(prazo, prioridade);
                 }));
+    }
+
+    public List<Tarefa> listAgendaSemana(LocalDate inicio, LocalDate fim, Optional<Set<UUID>> restriction) {
+        UUID tenantId = TenantContext.getCurrentTenantId();
+        return restriction.isEmpty()
+                ? tarefaRepository.findAgendaSemana(tenantId, inicio, fim)
+                : tarefaRepository.findAgendaSemanaInGroups(tenantId, inicio, fim, restriction.get());
     }
 
     private void validateProcessoInTenant(UUID processoId, UUID tenantId) {
