@@ -2,6 +2,7 @@ package com.jurisflow.modules.dashboard;
 
 import com.jurisflow.modules.cliente.Cliente;
 import com.jurisflow.modules.cliente.ClienteRepository;
+import com.jurisflow.modules.dashboard.dto.AniversarianteResponse;
 import com.jurisflow.modules.dashboard.dto.DashboardResumoResponse;
 import com.jurisflow.modules.financeiro.Contrato;
 import com.jurisflow.modules.financeiro.ContratoRepository;
@@ -52,10 +53,19 @@ public class DashboardService {
 
         ProximoPrazo prazo = calcularProximoPrazo(processos, processoIds);
         BigDecimal valorPago = calcularValorPagoTotal(processoIds, tenantId);
+        List<AniversarianteResponse> aniversariantes = calcularAniversariantesDoMes(tenantId);
 
         return new DashboardResumoResponse(
-                prazo.processoId(), prazo.numeroProcesso(), prazo.clienteNome(), prazo.data(), valorPago
+                prazo.processoId(), prazo.numeroProcesso(), prazo.clienteNome(), prazo.data(), valorPago,
+                aniversariantes
         );
+    }
+
+    private List<AniversarianteResponse> calcularAniversariantesDoMes(UUID tenantId) {
+        int mesAtual = LocalDate.now().getMonthValue();
+        return clienteRepository.findAniversariantesDoMes(tenantId, mesAtual).stream()
+                .map(c -> new AniversarianteResponse(c.getId(), c.getNome(), c.getTelefone(), c.getDataNascimento()))
+                .toList();
     }
 
     private ProximoPrazo calcularProximoPrazo(List<Processo> processos, List<UUID> processoIds) {

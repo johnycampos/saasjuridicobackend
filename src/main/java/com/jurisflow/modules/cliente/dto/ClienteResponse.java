@@ -1,5 +1,6 @@
 package com.jurisflow.modules.cliente.dto;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -12,6 +13,7 @@ public record ClienteResponse(
     String email,
     String endereco,
     String observacoes,
+    LocalDate dataNascimento,
     LocalDateTime createdAt,
     LocalDateTime updatedAt
 ) {}

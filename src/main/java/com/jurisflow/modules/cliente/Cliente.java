@@ -7,6 +7,8 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDate;
+
 @Getter
 @Setter
 @Entity
@@ -27,4 +29,7 @@ public class Cliente extends TenantEntity {
 
     @Column(columnDefinition = "TEXT")
     private String observacoes;
+
+    @Column(name = "data_nascimento")
+    private LocalDate dataNascimento;
 }

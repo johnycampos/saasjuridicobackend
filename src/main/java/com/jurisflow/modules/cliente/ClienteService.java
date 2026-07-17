@@ -62,11 +62,12 @@ public class ClienteService {
         cliente.setEmail(request.email());
         cliente.setEndereco(request.endereco());
         cliente.setObservacoes(request.observacoes());
+        cliente.setDataNascimento(request.dataNascimento());
     }
 
     private ClienteResponse toResponse(Cliente c) {
         return new ClienteResponse(c.getId(), c.getTenantId(), c.getNome(), c.getCpfCnpj(),
-                c.getTelefone(), c.getEmail(), c.getEndereco(), c.getObservacoes(),
+                c.getTelefone(), c.getEmail(), c.getEndereco(), c.getObservacoes(), c.getDataNascimento(),
                 c.getCreatedAt(), c.getUpdatedAt());
     }
 }
