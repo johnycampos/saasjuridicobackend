@@ -1,5 +1,6 @@
 package com.jurisflow.modules.tenant;
 
+import com.jurisflow.modules.group.GroupService;
 import com.jurisflow.modules.tenant.dto.InviteMemberRequest;
 import com.jurisflow.modules.tenant.dto.TenantMemberResponse;
 import com.jurisflow.modules.tenant.dto.TenantRequest;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.text.Normalizer;
+import java.util.LinkedHashSet;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -26,6 +28,7 @@ public class TenantService {
     private final TenantRepository tenantRepository;
     private final TenantMemberRepository tenantMemberRepository;
     private final UserRepository userRepository;
+    private final GroupService groupService;
 
     @Transactional
     public TenantResponse create(TenantRequest request, UserPrincipal creator) {
@@ -105,6 +108,11 @@ public class TenantService {
         member.setStatus(TenantMemberStatus.PENDING);
         member.setAtivo(true);
         member = tenantMemberRepository.save(member);
+
+        if ((role == TenantRole.MEMBER || role == TenantRole.VIEWER)
+                && request.groupIds() != null && !request.groupIds().isEmpty()) {
+            groupService.assignAreas(tenantId, user, new LinkedHashSet<>(request.groupIds()));
+        }
 
         return toMemberResponse(member);
     }

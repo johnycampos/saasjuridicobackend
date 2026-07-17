@@ -3,7 +3,9 @@
 /app/src/main/java/com/jurisflow/modules/tribunal/dto/TribunalRequest.java
 /app/src/main/java/com/jurisflow/modules/user/User.java
 /app/src/main/java/com/jurisflow/modules/cliente/dto/ClienteResponse.java
+/app/src/main/java/com/jurisflow/modules/estado/EstadoService.java
 /app/src/main/java/com/jurisflow/modules/financeiro/dto/ParcelaRequest.java
+/app/src/main/java/com/jurisflow/modules/importacao/dto/ImportResultResponse.java
 /app/src/main/java/com/jurisflow/modules/financeiro/dto/ContratoRequest.java
 /app/src/main/java/com/jurisflow/modules/board/dto/ReorderRequest.java
 /app/src/main/java/com/jurisflow/modules/financeiro/dto/ParcelaResponse.java
@@ -14,10 +16,12 @@
 /app/src/main/java/com/jurisflow/modules/board/dto/BoardColumnRequest.java
 /app/src/main/java/com/jurisflow/modules/cliente/dto/ClienteRequest.java
 /app/src/main/java/com/jurisflow/modules/processo/dto/ProcessoRequest.java
+/app/src/main/java/com/jurisflow/modules/importacao/ImportService.java
 /app/src/main/java/com/jurisflow/modules/user/UserRepository.java
 /app/src/main/java/com/jurisflow/modules/group/GroupMember.java
 /app/src/main/java/com/jurisflow/modules/processolink/ProcessoLinkRepository.java
 /app/src/main/java/com/jurisflow/modules/tenant/dto/TenantResponse.java
+/app/src/main/java/com/jurisflow/modules/estado/Estado.java
 /app/src/main/java/com/jurisflow/modules/group/dto/GroupRequest.java
 /app/src/main/java/com/jurisflow/modules/processo/ProcessoController.java
 /app/src/main/java/com/jurisflow/modules/financeiro/FinanceiroController.java
@@ -38,6 +42,7 @@
 /app/src/main/java/com/jurisflow/modules/user/dto/UserResponse.java
 /app/src/main/java/com/jurisflow/modules/tenant/TenantController.java
 /app/src/main/java/com/jurisflow/modules/group/Group.java
+/app/src/main/java/com/jurisflow/modules/importacao/ImportController.java
 /app/src/main/java/com/jurisflow/modules/processolink/dto/ProcessoLinkResponse.java
 /app/src/main/java/com/jurisflow/modules/tarefa/dto/TarefaRequest.java
 /app/src/main/java/com/jurisflow/modules/tenant/dto/TenantMemberResponse.java
@@ -50,13 +55,16 @@
 /app/src/main/java/com/jurisflow/security/UserPrincipal.java
 /app/src/main/java/com/jurisflow/modules/processo/dto/MoveProcessoRequest.java
 /app/src/main/java/com/jurisflow/modules/processo/Processo.java
+/app/src/main/java/com/jurisflow/modules/dashboard/dto/AniversarianteResponse.java
 /app/src/main/java/com/jurisflow/modules/group/GroupController.java
 /app/src/main/java/com/jurisflow/modules/dashboard/DashboardService.java
 /app/src/main/java/com/jurisflow/modules/tenant/TenantMember.java
 /app/src/main/java/com/jurisflow/modules/processolink/ProcessoLinkController.java
+/app/src/main/java/com/jurisflow/modules/estado/dto/EstadoResponse.java
 /app/src/main/java/com/jurisflow/modules/processo/ProcessoRepository.java
 /app/src/main/java/com/jurisflow/modules/user/UserController.java
 /app/src/main/java/com/jurisflow/config/TenantInterceptor.java
+/app/src/main/java/com/jurisflow/modules/estado/EstadoController.java
 /app/src/main/java/com/jurisflow/modules/board/dto/BoardColumnResponse.java
 /app/src/main/java/com/jurisflow/modules/tribunal/TribunalService.java
 /app/src/main/java/com/jurisflow/shared/entity/TenantEntity.java
@@ -90,7 +98,9 @@
 /app/src/main/java/com/jurisflow/modules/tarefa/TarefaService.java
 /app/src/main/java/com/jurisflow/modules/cliente/ClienteService.java
 /app/src/main/java/com/jurisflow/security/OAuth2SuccessHandler.java
+/app/src/main/java/com/jurisflow/modules/estado/EstadoRepository.java
 /app/src/main/java/com/jurisflow/modules/board/BoardController.java
+/app/src/main/java/com/jurisflow/modules/dashboard/dto/AgendaTarefaResponse.java
 /app/src/main/java/com/jurisflow/modules/tarefa/Tarefa.java
 /app/src/main/java/com/jurisflow/modules/tribunal/TribunalRepository.java
 /app/src/main/java/com/jurisflow/shared/entity/BaseEntity.java

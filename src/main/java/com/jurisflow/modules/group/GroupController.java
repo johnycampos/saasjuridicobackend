@@ -24,8 +24,10 @@ public class GroupController {
     private final GroupService groupService;
 
     @GetMapping
-    public ResponseEntity<Page<GroupResponse>> list(@PageableDefault(size = 20) Pageable pageable) {
-        return ResponseEntity.ok(groupService.listByTenant(pageable));
+    public ResponseEntity<Page<GroupResponse>> list(
+            @PageableDefault(size = 20) Pageable pageable,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(groupService.listByTenant(pageable, principal.getId()));
     }
 
     @PostMapping

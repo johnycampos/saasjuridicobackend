@@ -8,6 +8,7 @@ import com.jurisflow.modules.processo.ProcessoRepository;
 import com.jurisflow.modules.processo.ProcessoStatus;
 import com.jurisflow.modules.tenant.TenantMemberRepository;
 import com.jurisflow.modules.tenant.TenantRole;
+import com.jurisflow.modules.user.User;
 import com.jurisflow.modules.user.UserRepository;
 import com.jurisflow.security.TenantContext;
 import com.jurisflow.security.UserPrincipal;
@@ -18,6 +19,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -66,9 +68,17 @@ public class GroupService {
         return toResponse(group);
     }
 
-    public Page<GroupResponse> listByTenant(Pageable pageable) {
+    public Page<GroupResponse> listByTenant(Pageable pageable, UUID userId) {
         UUID tenantId = TenantContext.getCurrentTenantId();
-        return groupRepository.findByTenantId(tenantId, pageable).map(this::toResponse);
+        var restriction = resolveGroupRestriction(tenantId, userId);
+
+        if (restriction.isEmpty()) {
+            return groupRepository.findByTenantId(tenantId, pageable).map(this::toResponse);
+        }
+        if (restriction.get().isEmpty()) {
+            return Page.empty(pageable);
+        }
+        return groupRepository.findByTenantIdAndIdIn(tenantId, restriction.get(), pageable).map(this::toResponse);
     }
 
     @Transactional
@@ -105,6 +115,35 @@ public class GroupService {
     public void removeMember(UUID groupId, UUID userId) {
         findGroupInTenant(groupId);
         groupMemberRepository.deleteByGroupIdAndUser_Id(groupId, userId);
+    }
+
+    /**
+     * Atribui em lote as areas (grupos) que um usuario pode ver, inserindo
+     * um GroupMember por area ainda nao vinculada. Usado ao adicionar um
+     * membro ao tenant com visibilidade restrita a areas especificas.
+     */
+    @Transactional
+    public void assignAreas(UUID tenantId, User user, Set<UUID> groupIds) {
+        if (groupIds == null || groupIds.isEmpty()) return;
+
+        List<Group> groups = groupRepository.findAllById(groupIds);
+        if (groups.size() != groupIds.size()) {
+            throw BusinessException.notFound("Uma ou mais areas informadas");
+        }
+        for (Group g : groups) {
+            if (!g.getTenantId().equals(tenantId)) {
+                throw BusinessException.forbidden();
+            }
+        }
+
+        for (UUID groupId : groupIds) {
+            if (groupMemberRepository.existsByGroupIdAndUser_Id(groupId, user.getId())) continue;
+            GroupMember member = new GroupMember();
+            member.setGroupId(groupId);
+            member.setUser(user);
+            member.setRole(GroupRole.MEMBER);
+            groupMemberRepository.save(member);
+        }
     }
 
     /**

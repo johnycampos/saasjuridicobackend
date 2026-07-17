@@ -1,5 +1,6 @@
 package com.jurisflow.modules.tenant;
 
+import com.jurisflow.modules.group.GroupService;
 import com.jurisflow.modules.tenant.dto.TenantRequest;
 import com.jurisflow.modules.tenant.dto.TenantResponse;
 import com.jurisflow.modules.user.UserRepository;
@@ -31,6 +32,9 @@ class TenantServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private GroupService groupService;
 
     @InjectMocks
     private TenantService tenantService;
