@@ -166,6 +166,16 @@ public class GroupService {
         return Optional.of(groupIds);
     }
 
+    /**
+     * Remove todas as areas (group_members) que um usuario tem dentro de um
+     * tenant. Usado ao remover o membro do escritorio, para que o acesso as
+     * areas nao fique "orfao" (e nao atrapalhe uma futura readmissao).
+     */
+    @Transactional
+    public void removeAllAreasForUser(UUID tenantId, UUID userId) {
+        groupMemberRepository.deleteByUserIdAndTenantId(userId, tenantId);
+    }
+
     private Group findGroupInTenant(UUID groupId) {
         UUID tenantId = TenantContext.getCurrentTenantId();
         Group group = groupRepository.findById(groupId)

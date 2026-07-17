@@ -1,5 +1,6 @@
 package com.jurisflow.modules.processo;
 
+import com.jurisflow.modules.processo.dto.MoveProcessoAreaRequest;
 import com.jurisflow.modules.processo.dto.MoveProcessoRequest;
 import com.jurisflow.modules.processo.dto.ProcessoRequest;
 import com.jurisflow.modules.processo.dto.ProcessoResponse;
@@ -65,6 +66,14 @@ public class ProcessoController {
             @PathVariable UUID id,
             @Valid @RequestBody MoveProcessoRequest request) {
         return ResponseEntity.ok(processoService.move(id, request));
+    }
+
+    @PutMapping("/{id}/area")
+    public ResponseEntity<ProcessoResponse> moveToArea(
+            @PathVariable UUID id,
+            @Valid @RequestBody MoveProcessoAreaRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(processoService.moveToGroup(id, request.groupId(), principal));
     }
 
     @DeleteMapping("/{id}")

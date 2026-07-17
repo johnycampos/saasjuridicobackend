@@ -1,6 +1,8 @@
 package com.jurisflow.modules.processo;
 
+import com.jurisflow.modules.board.BoardColumnRepository;
 import com.jurisflow.modules.cliente.ClienteRepository;
+import com.jurisflow.modules.group.GroupRepository;
 import com.jurisflow.modules.group.GroupService;
 import com.jurisflow.modules.processo.dto.MoveProcessoRequest;
 import com.jurisflow.modules.processo.dto.ProcessoRequest;
@@ -43,6 +45,12 @@ class ProcessoServiceTest {
 
     @Mock
     private GroupService groupService;
+
+    @Mock
+    private GroupRepository groupRepository;
+
+    @Mock
+    private BoardColumnRepository boardColumnRepository;
 
     @InjectMocks
     private ProcessoService processoService;

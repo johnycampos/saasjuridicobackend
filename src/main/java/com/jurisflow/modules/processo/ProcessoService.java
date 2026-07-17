@@ -1,7 +1,10 @@
 package com.jurisflow.modules.processo;
 
+import com.jurisflow.modules.board.BoardColumn;
+import com.jurisflow.modules.board.BoardColumnRepository;
 import com.jurisflow.modules.cliente.Cliente;
 import com.jurisflow.modules.cliente.ClienteRepository;
+import com.jurisflow.modules.group.GroupRepository;
 import com.jurisflow.modules.group.GroupService;
 import com.jurisflow.modules.processo.dto.MoveProcessoRequest;
 import com.jurisflow.modules.processo.dto.ProcessoRequest;
@@ -32,6 +35,8 @@ public class ProcessoService {
     private final ClienteRepository clienteRepository;
     private final TarefaService tarefaService;
     private final GroupService groupService;
+    private final GroupRepository groupRepository;
+    private final BoardColumnRepository boardColumnRepository;
 
     @Transactional
     public ProcessoResponse create(ProcessoRequest request, UserPrincipal principal) {
@@ -124,6 +129,29 @@ public class ProcessoService {
 
         processo.setColumnId(request.targetColumnId());
         if (request.newPosition() != null) processo.setPosicaoColuna(request.newPosition());
+
+        return toResponse(processoRepository.save(processo));
+    }
+
+    @Transactional
+    public ProcessoResponse moveToGroup(UUID id, UUID targetGroupId, UserPrincipal principal) {
+        UUID tenantId = TenantContext.getCurrentTenantId();
+        Processo processo = processoRepository.findByIdAndTenantId(id, tenantId)
+                .orElseThrow(() -> BusinessException.notFound("Processo"));
+
+        requireGroupAccess(tenantId, principal.getId(), processo.getGroupId());
+        requireGroupAccess(tenantId, principal.getId(), targetGroupId);
+
+        groupRepository.findByIdAndTenantId(targetGroupId, tenantId)
+                .orElseThrow(() -> BusinessException.notFound("Area"));
+
+        BoardColumn targetColumn = boardColumnRepository.findByGroupIdOrderByPosicaoAsc(targetGroupId)
+                .stream().findFirst()
+                .orElseThrow(() -> BusinessException.conflict("A area de destino nao possui nenhuma coluna"));
+
+        processo.setGroupId(targetGroupId);
+        processo.setColumnId(targetColumn.getId());
+        processo.setPosicaoColuna(0);
 
         return toResponse(processoRepository.save(processo));
     }

@@ -1,8 +1,10 @@
 package com.jurisflow.modules.tenant;
 
 import com.jurisflow.modules.group.GroupService;
+import com.jurisflow.modules.tenant.dto.InviteMemberRequest;
 import com.jurisflow.modules.tenant.dto.TenantRequest;
 import com.jurisflow.modules.tenant.dto.TenantResponse;
+import com.jurisflow.modules.user.User;
 import com.jurisflow.modules.user.UserRepository;
 import com.jurisflow.security.UserPrincipal;
 import com.jurisflow.shared.exception.BusinessException;
@@ -140,5 +142,70 @@ class TenantServiceTest {
         assertThatThrownBy(() -> tenantService.removeMember(tenantId, ownerId, principal))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("OWNER");
+    }
+
+    @Test
+    void removeMember_shouldCleanUpGroupAreas() {
+        UUID tenantId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+
+        TenantMember callerMember = new TenantMember();
+        callerMember.setRole(TenantRole.ADMIN);
+
+        TenantMember targetMember = new TenantMember();
+        targetMember.setRole(TenantRole.MEMBER);
+        targetMember.setAtivo(true);
+
+        when(tenantMemberRepository.findActiveMember(tenantId, principal.getId()))
+                .thenReturn(Optional.of(callerMember));
+        when(tenantMemberRepository.findByTenantIdAndUser_Id(tenantId, userId))
+                .thenReturn(Optional.of(targetMember));
+
+        tenantService.removeMember(tenantId, userId, principal);
+
+        assertThat(targetMember.getAtivo()).isFalse();
+        verify(groupService).removeAllAreasForUser(tenantId, userId);
+    }
+
+    @Test
+    void addMemberByEmail_shouldReactivateExistingRow_whenUserWasPreviouslyRemoved() {
+        UUID tenantId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        String email = "removed@test.com";
+
+        TenantMember callerMember = new TenantMember();
+        callerMember.setRole(TenantRole.OWNER);
+
+        User user = new User();
+        user.setId(userId);
+        user.setEmail(email);
+        user.setNome("removed");
+
+        // simula a linha deixada por uma remocao anterior (ativo=false) —
+        // tenant_members tem UNIQUE(tenant_id, user_id), entao inserir uma
+        // linha nova aqui quebraria a constraint
+        TenantMember existingInactive = new TenantMember();
+        existingInactive.setTenantId(tenantId);
+        existingInactive.setUser(user);
+        existingInactive.setRole(TenantRole.VIEWER);
+        existingInactive.setAtivo(false);
+
+        when(tenantMemberRepository.findActiveMember(tenantId, principal.getId()))
+                .thenReturn(Optional.of(callerMember));
+        when(tenantMemberRepository.existsByUser_EmailAndRoleAndAtivoTrue(email, TenantRole.OWNER))
+                .thenReturn(false);
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(tenantMemberRepository.existsByTenantIdAndUser_IdAndAtivoTrue(tenantId, userId))
+                .thenReturn(false);
+        when(tenantMemberRepository.findByTenantIdAndUser_Id(tenantId, userId))
+                .thenReturn(Optional.of(existingInactive));
+        when(tenantMemberRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        InviteMemberRequest request = new InviteMemberRequest(email, TenantRole.MEMBER, null);
+        tenantService.addMemberByEmail(tenantId, request, principal);
+
+        verify(tenantMemberRepository).save(existingInactive);
+        assertThat(existingInactive.getAtivo()).isTrue();
+        assertThat(existingInactive.getRole()).isEqualTo(TenantRole.MEMBER);
     }
 }

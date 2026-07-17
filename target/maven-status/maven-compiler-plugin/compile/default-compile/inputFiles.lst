@@ -95,6 +95,7 @@
 /app/src/main/java/com/jurisflow/config/SecurityConfig.java
 /app/src/main/java/com/jurisflow/shared/exception/GlobalExceptionHandler.java
 /app/src/main/java/com/jurisflow/modules/board/BoardColumn.java
+/app/src/main/java/com/jurisflow/modules/processo/dto/MoveProcessoAreaRequest.java
 /app/src/main/java/com/jurisflow/modules/tarefa/TarefaService.java
 /app/src/main/java/com/jurisflow/modules/cliente/ClienteService.java
 /app/src/main/java/com/jurisflow/security/OAuth2SuccessHandler.java

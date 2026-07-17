@@ -101,7 +101,11 @@ public class TenantService {
             throw new BusinessException("Este usuario ja e membro deste escritorio");
         }
 
-        TenantMember member = new TenantMember();
+        // tenant_members tem UNIQUE(tenant_id, user_id) — um usuario removido
+        // anteriormente (ativo=false) ja tem uma linha aqui, entao reaproveita
+        // (reativa) em vez de inserir uma nova e violar a constraint
+        TenantMember member = tenantMemberRepository.findByTenantIdAndUser_Id(tenantId, user.getId())
+                .orElseGet(TenantMember::new);
         member.setTenantId(tenantId);
         member.setUser(user);
         member.setRole(role);
@@ -139,6 +143,11 @@ public class TenantService {
         }
         member.setAtivo(false);
         tenantMemberRepository.save(member);
+
+        // sem isso, as areas concedidas ficavam "orfas" em group_members —
+        // nao davam acesso de verdade (o TenantInterceptor ja bloqueia quem
+        // nao e membro ativo), mas atrapalhavam uma readmissao futura
+        groupService.removeAllAreasForUser(tenantId, userId);
     }
 
     // OWNER=0, ADMIN=1, MEMBER=2, VIEWER=3 — menor ordinal = mais permissão

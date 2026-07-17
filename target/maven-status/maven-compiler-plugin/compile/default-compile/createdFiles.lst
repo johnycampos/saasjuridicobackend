@@ -53,6 +53,7 @@ com/jurisflow/modules/financeiro/ParcelaRepository.class
 com/jurisflow/modules/auth/dto/RefreshTokenRequest.class
 com/jurisflow/modules/dashboard/DashboardService.class
 com/jurisflow/modules/dashboard/DashboardController.class
+com/jurisflow/modules/processo/dto/MoveProcessoAreaRequest.class
 com/jurisflow/modules/processo/dto/MoveProcessoRequest.class
 com/jurisflow/modules/group/GroupRole.class
 com/jurisflow/modules/board/BoardColumnRepository.class
