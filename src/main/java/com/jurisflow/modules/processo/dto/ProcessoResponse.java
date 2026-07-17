@@ -15,6 +15,7 @@ public record ProcessoResponse(
     UUID columnId,
     UUID clienteId,
     String clienteNome,
+    String clienteTelefone,
     String descricao,
     String numeroProcesso,
     String tipoAcao,

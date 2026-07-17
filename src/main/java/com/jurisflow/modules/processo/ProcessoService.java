@@ -151,34 +151,32 @@ public class ProcessoService {
     }
 
     private ProcessoResponse toResponse(Processo p) {
-        String clienteNome = resolveClienteNome(p.getClienteId());
+        Cliente cliente = resolveCliente(p.getClienteId());
         TarefaResumo resumo = tarefaService.resumoPorProcesso(List.of(p.getId()))
                 .getOrDefault(p.getId(), TarefaResumo.VAZIO);
-        return build(p, clienteNome, resumo);
+        return build(p, cliente, resumo);
     }
 
     private Page<ProcessoResponse> toResponsePage(Page<Processo> page) {
         List<Processo> content = page.getContent();
 
         var clienteIds = content.stream().map(Processo::getClienteId).filter(Objects::nonNull).collect(Collectors.toSet());
-        Map<UUID, String> clienteNomes = clienteRepository.findAllById(clienteIds).stream()
-                .collect(Collectors.toMap(Cliente::getId, Cliente::getNome));
+        Map<UUID, Cliente> clientesPorId = clienteRepository.findAllById(clienteIds).stream()
+                .collect(Collectors.toMap(Cliente::getId, c -> c));
 
         var resumos = tarefaService.resumoPorProcesso(content.stream().map(Processo::getId).toList());
 
-        return page.map(p -> build(p, clienteNomes.get(p.getClienteId()), resumos.getOrDefault(p.getId(), TarefaResumo.VAZIO)));
+        return page.map(p -> build(p, clientesPorId.get(p.getClienteId()), resumos.getOrDefault(p.getId(), TarefaResumo.VAZIO)));
     }
 
-    private String resolveClienteNome(UUID clienteId) {
-        return clienteId != null
-                ? clienteRepository.findById(clienteId).map(Cliente::getNome).orElse(null)
-                : null;
+    private Cliente resolveCliente(UUID clienteId) {
+        return clienteId != null ? clienteRepository.findById(clienteId).orElse(null) : null;
     }
 
-    private ProcessoResponse build(Processo p, String clienteNome, TarefaResumo resumo) {
+    private ProcessoResponse build(Processo p, Cliente cliente, TarefaResumo resumo) {
         return new ProcessoResponse(
                 p.getId(), p.getTenantId(), p.getGroupId(), p.getColumnId(),
-                p.getClienteId(), clienteNome,
+                p.getClienteId(), cliente != null ? cliente.getNome() : null, cliente != null ? cliente.getTelefone() : null,
                 p.getDescricao(), p.getNumeroProcesso(), p.getTipoAcao(),
                 p.getVara(), p.getComarca(), p.getEstado(), p.getTribunal(), p.getReu(),
                 p.getStatus(), p.getValorCausa(), p.getDataDistribuicao(),

@@ -57,8 +57,8 @@ public class BoardService {
                 .map(Processo::getClienteId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
-        Map<UUID, String> clienteNomes = clienteRepository.findAllById(clienteIds).stream()
-                .collect(Collectors.toMap(Cliente::getId, Cliente::getNome));
+        Map<UUID, Cliente> clientesPorId = clienteRepository.findAllById(clienteIds).stream()
+                .collect(Collectors.toMap(Cliente::getId, c -> c));
 
         List<UUID> processoIds = processosByColumn.values().stream()
                 .flatMap(List::stream).map(Processo::getId).toList();
@@ -81,9 +81,11 @@ public class BoardService {
                             .sorted(porUrgencia)
                             .map(p -> {
                                 var resumo = resumos.getOrDefault(p.getId(), TarefaResumo.VAZIO);
+                                Cliente cliente = clientesPorId.get(p.getClienteId());
                                 return new ProcessoResponse(
                                         p.getId(), p.getTenantId(), p.getGroupId(), p.getColumnId(),
-                                        p.getClienteId(), clienteNomes.get(p.getClienteId()),
+                                        p.getClienteId(), cliente != null ? cliente.getNome() : null,
+                                        cliente != null ? cliente.getTelefone() : null,
                                         p.getDescricao(), p.getNumeroProcesso(), p.getTipoAcao(),
                                         p.getVara(), p.getComarca(), p.getEstado(), p.getTribunal(), p.getReu(),
                                         p.getStatus(), p.getValorCausa(), p.getDataDistribuicao(),
