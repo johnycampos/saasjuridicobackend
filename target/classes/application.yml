@@ -35,6 +35,11 @@ spring:
             scope: openid,profile,email
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
 
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
   data:
     redis:
       host: ${SPRING_REDIS_HOST:localhost}
@@ -75,5 +80,5 @@ app:
     secret: ${JWT_SECRET:jurisflow-super-secret-key-change-in-production-minimum-32-chars}
     expiration: 900000
     refresh-expiration: 604800000
-  frontend-url: ${FRONTEND_URL:http://localhost:3000}
-  cors-origins: ${CORS_ORIGINS:http://localhost:3000}
+  frontend-url: ${FRONTEND_URL:http://localhost}
+  cors-origins: ${CORS_ORIGINS:http://localhost}
