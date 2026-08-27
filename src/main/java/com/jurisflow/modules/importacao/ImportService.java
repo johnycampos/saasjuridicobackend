@@ -13,6 +13,7 @@ import com.jurisflow.security.TenantContext;
 import com.jurisflow.security.UserPrincipal;
 import com.jurisflow.shared.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.DataFormatter;
@@ -37,6 +38,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -159,7 +161,8 @@ public class ImportService {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            throw new BusinessException("Nao foi possivel ler o arquivo enviado. Envie uma planilha .xlsx valida.");
+            log.error("Erro ao importar planilha para o grupo {}: {}", groupId, e.getMessage(), e);
+            throw new BusinessException("Nao foi possivel ler o arquivo enviado. Detalhes: " + e.getMessage());
         }
 
         return new ImportResultResponse(colunasCriadas, processosCriados, erros);

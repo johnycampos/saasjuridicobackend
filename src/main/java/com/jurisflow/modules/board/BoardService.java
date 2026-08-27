@@ -6,6 +6,8 @@ import com.jurisflow.modules.board.dto.ReorderRequest;
 import com.jurisflow.modules.cliente.Cliente;
 import com.jurisflow.modules.cliente.ClienteRepository;
 import com.jurisflow.modules.group.GroupService;
+import com.jurisflow.modules.movimento.MovimentoResumo;
+import com.jurisflow.modules.movimento.MovimentoService;
 import com.jurisflow.modules.processo.Processo;
 import com.jurisflow.modules.processo.ProcessoRepository;
 import com.jurisflow.modules.processo.dto.ProcessoResponse;
@@ -36,6 +38,7 @@ public class BoardService {
     private final ProcessoRepository processoRepository;
     private final ClienteRepository clienteRepository;
     private final TarefaService tarefaService;
+    private final MovimentoService movimentoService;
     private final GroupService groupService;
 
     public List<BoardColumnResponse> getBoardByGroup(UUID groupId, UUID userId) {
@@ -63,6 +66,7 @@ public class BoardService {
         List<UUID> processoIds = processosByColumn.values().stream()
                 .flatMap(List::stream).map(Processo::getId).toList();
         Map<UUID, TarefaResumo> resumos = tarefaService.resumoPorProcesso(processoIds);
+        Map<UUID, MovimentoResumo> movResumos = movimentoService.resumoPorProcesso(processoIds);
 
         Comparator<Processo> porUrgencia = Comparator
                 .comparing((Processo p) -> {
@@ -81,6 +85,7 @@ public class BoardService {
                             .sorted(porUrgencia)
                             .map(p -> {
                                 var resumo = resumos.getOrDefault(p.getId(), TarefaResumo.VAZIO);
+                                var movResumo = movResumos.getOrDefault(p.getId(), MovimentoResumo.VAZIO);
                                 Cliente cliente = clientesPorId.get(p.getClienteId());
                                 return new ProcessoResponse(
                                         p.getId(), p.getTenantId(), p.getGroupId(), p.getColumnId(),
@@ -90,6 +95,7 @@ public class BoardService {
                                         p.getVara(), p.getComarca(), p.getEstado(), p.getTribunal(), p.getReu(),
                                         p.getStatus(), p.getValorCausa(), p.getDataDistribuicao(),
                                         resumo.prazo(), resumo.prioridade(),
+                                        movResumo.ultimaMovimentacao(), movResumo.naoLida(),
                                         p.getPosicaoColuna(), p.getCreatedBy(),
                                         p.getCreatedAt(), p.getUpdatedAt());
                             })

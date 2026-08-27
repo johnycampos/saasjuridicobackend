@@ -6,6 +6,8 @@ import com.jurisflow.modules.cliente.Cliente;
 import com.jurisflow.modules.cliente.ClienteRepository;
 import com.jurisflow.modules.group.GroupRepository;
 import com.jurisflow.modules.group.GroupService;
+import com.jurisflow.modules.movimento.MovimentoResumo;
+import com.jurisflow.modules.movimento.MovimentoService;
 import com.jurisflow.modules.processo.dto.MoveProcessoRequest;
 import com.jurisflow.modules.processo.dto.ProcessoRequest;
 import com.jurisflow.modules.processo.dto.ProcessoResponse;
@@ -34,6 +36,7 @@ public class ProcessoService {
     private final ProcessoRepository processoRepository;
     private final ClienteRepository clienteRepository;
     private final TarefaService tarefaService;
+    private final MovimentoService movimentoService;
     private final GroupService groupService;
     private final GroupRepository groupRepository;
     private final BoardColumnRepository boardColumnRepository;
@@ -182,7 +185,9 @@ public class ProcessoService {
         Cliente cliente = resolveCliente(p.getClienteId());
         TarefaResumo resumo = tarefaService.resumoPorProcesso(List.of(p.getId()))
                 .getOrDefault(p.getId(), TarefaResumo.VAZIO);
-        return build(p, cliente, resumo);
+        MovimentoResumo movResumo = movimentoService.resumoPorProcesso(List.of(p.getId()))
+                .getOrDefault(p.getId(), MovimentoResumo.VAZIO);
+        return build(p, cliente, resumo, movResumo);
     }
 
     private Page<ProcessoResponse> toResponsePage(Page<Processo> page) {
@@ -192,16 +197,20 @@ public class ProcessoService {
         Map<UUID, Cliente> clientesPorId = clienteRepository.findAllById(clienteIds).stream()
                 .collect(Collectors.toMap(Cliente::getId, c -> c));
 
-        var resumos = tarefaService.resumoPorProcesso(content.stream().map(Processo::getId).toList());
+        var processoIds = content.stream().map(Processo::getId).toList();
+        var resumos = tarefaService.resumoPorProcesso(processoIds);
+        var movResumos = movimentoService.resumoPorProcesso(processoIds);
 
-        return page.map(p -> build(p, clientesPorId.get(p.getClienteId()), resumos.getOrDefault(p.getId(), TarefaResumo.VAZIO)));
+        return page.map(p -> build(p, clientesPorId.get(p.getClienteId()),
+                resumos.getOrDefault(p.getId(), TarefaResumo.VAZIO),
+                movResumos.getOrDefault(p.getId(), MovimentoResumo.VAZIO)));
     }
 
     private Cliente resolveCliente(UUID clienteId) {
         return clienteId != null ? clienteRepository.findById(clienteId).orElse(null) : null;
     }
 
-    private ProcessoResponse build(Processo p, Cliente cliente, TarefaResumo resumo) {
+    private ProcessoResponse build(Processo p, Cliente cliente, TarefaResumo resumo, MovimentoResumo movResumo) {
         return new ProcessoResponse(
                 p.getId(), p.getTenantId(), p.getGroupId(), p.getColumnId(),
                 p.getClienteId(), cliente != null ? cliente.getNome() : null, cliente != null ? cliente.getTelefone() : null,
@@ -209,6 +218,7 @@ public class ProcessoService {
                 p.getVara(), p.getComarca(), p.getEstado(), p.getTribunal(), p.getReu(),
                 p.getStatus(), p.getValorCausa(), p.getDataDistribuicao(),
                 resumo.prazo(), resumo.prioridade(),
+                movResumo.ultimaMovimentacao(), movResumo.naoLida(),
                 p.getPosicaoColuna(), p.getCreatedBy(),
                 p.getCreatedAt(), p.getUpdatedAt()
         );

@@ -29,6 +29,8 @@ public record ProcessoResponse(
     LocalDate dataDistribuicao,
     LocalDate proximaTarefaPrazo,
     PrioridadeTipo prioridadeMaisUrgente,
+    LocalDateTime ultimaMovimentacao,
+    Boolean temMovimentacaoNaoLida,
     Integer posicaoColuna,
     UUID createdBy,
     LocalDateTime createdAt,

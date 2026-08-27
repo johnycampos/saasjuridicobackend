@@ -4,6 +4,7 @@ import com.jurisflow.modules.board.BoardColumnRepository;
 import com.jurisflow.modules.cliente.ClienteRepository;
 import com.jurisflow.modules.group.GroupRepository;
 import com.jurisflow.modules.group.GroupService;
+import com.jurisflow.modules.movimento.MovimentoService;
 import com.jurisflow.modules.processo.dto.MoveProcessoRequest;
 import com.jurisflow.modules.processo.dto.ProcessoRequest;
 import com.jurisflow.modules.processo.dto.ProcessoResponse;
@@ -52,6 +53,9 @@ class ProcessoServiceTest {
     @Mock
     private BoardColumnRepository boardColumnRepository;
 
+    @Mock
+    private MovimentoService movimentoService;
+
     @InjectMocks
     private ProcessoService processoService;
 
@@ -64,6 +68,7 @@ class ProcessoServiceTest {
         TenantContext.setCurrentTenantId(tenantId);
         principal = new UserPrincipal(userId, "user@test.com", "Test User", null);
         lenient().when(tarefaService.resumoPorProcesso(anyList())).thenReturn(Map.of());
+        lenient().when(movimentoService.resumoPorProcesso(anyList())).thenReturn(Map.of());
         lenient().when(groupService.resolveGroupRestriction(any(), any())).thenReturn(Optional.empty());
     }
 
