@@ -1,5 +1,6 @@
 package com.jurisflow.config;
 
+import com.jurisflow.security.ApiKeyAuthFilter;
 import com.jurisflow.security.JwtAuthenticationFilter;
 import com.jurisflow.security.OAuth2SuccessHandler;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final ApiKeyAuthFilter apiKeyAuthFilter;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
 
     @Value("${app.cors-origins}")
@@ -39,9 +41,13 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**", "/login/**", "/oauth2/**", "/api/invites/accept/**", "/actuator/health").permitAll()
+                // autenticado pelo ApiKeyAuthFilter (header X-Api-Key), nao por
+                // OAuth2/JWT de usuario — ver com.jurisflow.security.ApiKeyAuthFilter
+                .requestMatchers("/api/integrations/**").permitAll()
                 .anyRequest().authenticated()
             )
             .oauth2Login(oauth2 -> oauth2.successHandler(oAuth2SuccessHandler))
+            .addFilterBefore(apiKeyAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

@@ -190,4 +190,38 @@ class ProcessoServiceTest {
                 p.getColumnId().equals(newColumnId) && p.getPosicaoColuna() == 2
         ));
     }
+
+    @Test
+    void listParaSincronizacaoMovimentos_shouldMapParaProcessoNumeroResponse() {
+        Processo processo = new Processo();
+        processo.setId(UUID.randomUUID());
+        processo.setTenantId(tenantId);
+        processo.setNumeroProcesso("5006378-15.2024.4.02.5120");
+        processo.setTribunal("TRF2");
+        processo.setStatus(ProcessoStatus.ATIVO);
+
+        Pageable pageable = Pageable.unpaged();
+        when(processoRepository.findAtivosComNumeroProcesso(ProcessoStatus.ATIVO, null, pageable))
+                .thenReturn(new PageImpl<>(List.of(processo)));
+
+        var page = processoService.listParaSincronizacaoMovimentos(null, pageable);
+
+        assertThat(page.getContent()).hasSize(1);
+        var item = page.getContent().get(0);
+        assertThat(item.tenantId()).isEqualTo(tenantId);
+        assertThat(item.processoId()).isEqualTo(processo.getId());
+        assertThat(item.numeroProcesso()).isEqualTo("5006378-15.2024.4.02.5120");
+        assertThat(item.tribunal()).isEqualTo("TRF2");
+    }
+
+    @Test
+    void listParaSincronizacaoMovimentos_shouldRepassarFiltroDeTenant() {
+        Pageable pageable = Pageable.unpaged();
+        when(processoRepository.findAtivosComNumeroProcesso(ProcessoStatus.ATIVO, tenantId, pageable))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        processoService.listParaSincronizacaoMovimentos(tenantId, pageable);
+
+        verify(processoRepository).findAtivosComNumeroProcesso(ProcessoStatus.ATIVO, tenantId, pageable);
+    }
 }

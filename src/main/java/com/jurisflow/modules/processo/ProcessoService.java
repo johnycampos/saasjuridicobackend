@@ -9,6 +9,7 @@ import com.jurisflow.modules.group.GroupService;
 import com.jurisflow.modules.movimento.MovimentoResumo;
 import com.jurisflow.modules.movimento.MovimentoService;
 import com.jurisflow.modules.processo.dto.MoveProcessoRequest;
+import com.jurisflow.modules.processo.dto.ProcessoNumeroResponse;
 import com.jurisflow.modules.processo.dto.ProcessoRequest;
 import com.jurisflow.modules.processo.dto.ProcessoResponse;
 import com.jurisflow.modules.tarefa.TarefaResumo;
@@ -166,6 +167,18 @@ public class ProcessoService {
                 .orElseThrow(() -> BusinessException.notFound("Processo"));
         processo.setStatus(ProcessoStatus.ARQUIVADO);
         processoRepository.save(processo);
+    }
+
+    /**
+     * Usado por GET /api/integrations/processos (ProcessoSyncController) —
+     * alimenta o script externo com os dados minimos pra ele saber quais
+     * processos consultar no DataJud e depois mandar pro
+     * /api/integrations/movimentos/sync. tenantIdFiltro null = todos os
+     * tenants (deliberadamente cross-tenant, ver nota no controller).
+     */
+    public Page<ProcessoNumeroResponse> listParaSincronizacaoMovimentos(UUID tenantIdFiltro, Pageable pageable) {
+        return processoRepository.findAtivosComNumeroProcesso(ProcessoStatus.ATIVO, tenantIdFiltro, pageable)
+                .map(p -> new ProcessoNumeroResponse(p.getTenantId(), p.getId(), p.getNumeroProcesso(), p.getTribunal()));
     }
 
     private void requireGroupAccess(UUID tenantId, UUID userId, UUID groupId) {

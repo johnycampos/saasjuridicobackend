@@ -3,6 +3,8 @@ package com.jurisflow.modules.movimento;
 import com.jurisflow.shared.entity.TenantEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
@@ -38,4 +40,11 @@ public class Movimento extends TenantEntity {
 
     @Column(name = "visualizado_em")
     private LocalDateTime visualizadoEm;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private MovimentoOrigem origem = MovimentoOrigem.MOVIMENTO;
+
+    @Column(name = "hash_origem")
+    private String hashOrigem;
 }

@@ -82,3 +82,7 @@ app:
     refresh-expiration: 604800000
   frontend-url: ${FRONTEND_URL:http://localhost}
   cors-origins: ${CORS_ORIGINS:http://localhost}
+  # chave de sistema pro endpoint de integracao /api/integrations/movimentos/sync
+  # (script externo, ver com.jurisflow.security.ApiKeyAuthFilter). Sem default:
+  # se nao configurada, toda chamada ao endpoint eh rejeitada (falha segura).
+  integrations-api-key: ${INTEGRATIONS_API_KEY:}

@@ -1,5 +1,7 @@
 package com.jurisflow.modules.movimento.dto;
 
+import com.jurisflow.modules.movimento.MovimentoOrigem;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -14,5 +16,6 @@ public record MovimentoResponse(
     Boolean visualizado,
     UUID visualizadoPor,
     LocalDateTime visualizadoEm,
-    LocalDateTime createdAt
+    LocalDateTime createdAt,
+    MovimentoOrigem origem
 ) {}

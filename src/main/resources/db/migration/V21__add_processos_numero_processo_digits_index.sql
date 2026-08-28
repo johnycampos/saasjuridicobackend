@@ -1,0 +1,15 @@
+-- ============================================
+-- INDICE FUNCIONAL: busca de processo por numero
+-- normalizado (so digitos)
+--
+-- Usado pela sincronizacao em lote de movimentos
+-- (POST /api/integrations/movimentos/sync), que
+-- recebe o numero do processo vindo de uma API
+-- externa (formato DataJud) e precisa achar o
+-- processo correspondente no tenant. numero_processo
+-- eh VARCHAR livre, sem constraint de unicidade,
+-- podendo ter ou nao pontuacao CNJ (5006378-15.2024...
+-- vs 50063781520244025120) — por isso a comparacao eh
+-- sempre so-digitos dos dois lados.
+-- ============================================
+CREATE INDEX idx_processos_numero_digits ON processos (tenant_id, (regexp_replace(numero_processo, '[^0-9]', '', 'g')));
