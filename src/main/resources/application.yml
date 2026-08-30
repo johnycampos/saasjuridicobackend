@@ -77,7 +77,7 @@ management:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:jurisflow-super-secret-key-change-in-production-minimum-32-chars}
+    secret: ${JWT_SECRET:}
     expiration: 900000
     refresh-expiration: 604800000
   frontend-url: ${FRONTEND_URL:http://localhost}

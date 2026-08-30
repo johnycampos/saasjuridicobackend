@@ -6,6 +6,7 @@ import com.jurisflow.modules.tenant.dto.TenantRequest;
 import com.jurisflow.modules.tenant.dto.TenantResponse;
 import com.jurisflow.modules.user.User;
 import com.jurisflow.modules.user.UserRepository;
+import com.jurisflow.security.TenantAccessGuard;
 import com.jurisflow.security.UserPrincipal;
 import com.jurisflow.shared.exception.BusinessException;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,6 +39,9 @@ class TenantServiceTest {
     @Mock
     private GroupService groupService;
 
+    @Mock
+    private TenantAccessGuard tenantAccessGuard;
+
     @InjectMocks
     private TenantService tenantService;
 
@@ -60,7 +64,7 @@ class TenantServiceTest {
 
         when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
 
-        TenantResponse response = tenantService.getById(tenantId);
+        TenantResponse response = tenantService.getById(tenantId, principal.getId());
 
         assertThat(response.nome()).isEqualTo("Escritorio Silva");
         assertThat(response.slug()).isEqualTo("escritorio-silva");
@@ -72,7 +76,7 @@ class TenantServiceTest {
         UUID tenantId = UUID.randomUUID();
         when(tenantRepository.findById(tenantId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> tenantService.getById(tenantId))
+        assertThatThrownBy(() -> tenantService.getById(tenantId, principal.getId()))
                 .isInstanceOf(BusinessException.class)
                 .extracting("status")
                 .isEqualTo(HttpStatus.NOT_FOUND);
@@ -88,12 +92,9 @@ class TenantServiceTest {
         tenant.setMaxMembros(5);
         tenant.setAtivo(true);
 
-        TenantMember memberRole = new TenantMember();
-        memberRole.setRole(TenantRole.MEMBER);
-
         when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
-        when(tenantMemberRepository.findActiveMember(tenantId, principal.getId()))
-                .thenReturn(Optional.of(memberRole));
+        doThrow(BusinessException.forbidden())
+                .when(tenantAccessGuard).requireMinRole(tenantId, principal.getId(), TenantRole.ADMIN);
 
         assertThatThrownBy(() -> tenantService.update(tenantId, new TenantRequest("New Name", null, null, null), principal))
                 .isInstanceOf(BusinessException.class)
@@ -111,12 +112,7 @@ class TenantServiceTest {
         tenant.setMaxMembros(5);
         tenant.setAtivo(true);
 
-        TenantMember ownerMember = new TenantMember();
-        ownerMember.setRole(TenantRole.OWNER);
-
         when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
-        when(tenantMemberRepository.findActiveMember(tenantId, principal.getId()))
-                .thenReturn(Optional.of(ownerMember));
         when(tenantRepository.save(any())).thenReturn(tenant);
 
         TenantResponse response = tenantService.update(tenantId, new TenantRequest("New Name", null, null, null), principal);
@@ -128,14 +124,9 @@ class TenantServiceTest {
         UUID tenantId = UUID.randomUUID();
         UUID ownerId = UUID.randomUUID();
 
-        TenantMember callerMember = new TenantMember();
-        callerMember.setRole(TenantRole.ADMIN);
-
         TenantMember targetMember = new TenantMember();
         targetMember.setRole(TenantRole.OWNER);
 
-        when(tenantMemberRepository.findActiveMember(tenantId, principal.getId()))
-                .thenReturn(Optional.of(callerMember));
         when(tenantMemberRepository.findByTenantIdAndUser_Id(tenantId, ownerId))
                 .thenReturn(Optional.of(targetMember));
 
@@ -149,15 +140,10 @@ class TenantServiceTest {
         UUID tenantId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
 
-        TenantMember callerMember = new TenantMember();
-        callerMember.setRole(TenantRole.ADMIN);
-
         TenantMember targetMember = new TenantMember();
         targetMember.setRole(TenantRole.MEMBER);
         targetMember.setAtivo(true);
 
-        when(tenantMemberRepository.findActiveMember(tenantId, principal.getId()))
-                .thenReturn(Optional.of(callerMember));
         when(tenantMemberRepository.findByTenantIdAndUser_Id(tenantId, userId))
                 .thenReturn(Optional.of(targetMember));
 
@@ -173,9 +159,6 @@ class TenantServiceTest {
         UUID userId = UUID.randomUUID();
         String email = "removed@test.com";
 
-        TenantMember callerMember = new TenantMember();
-        callerMember.setRole(TenantRole.OWNER);
-
         User user = new User();
         user.setId(userId);
         user.setEmail(email);
@@ -190,8 +173,6 @@ class TenantServiceTest {
         existingInactive.setRole(TenantRole.VIEWER);
         existingInactive.setAtivo(false);
 
-        when(tenantMemberRepository.findActiveMember(tenantId, principal.getId()))
-                .thenReturn(Optional.of(callerMember));
         when(tenantMemberRepository.existsByUser_EmailAndRoleAndAtivoTrue(email, TenantRole.OWNER))
                 .thenReturn(false);
         when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));

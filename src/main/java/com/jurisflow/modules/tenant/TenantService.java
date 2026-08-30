@@ -7,6 +7,7 @@ import com.jurisflow.modules.tenant.dto.TenantRequest;
 import com.jurisflow.modules.tenant.dto.TenantResponse;
 import com.jurisflow.modules.user.User;
 import com.jurisflow.modules.user.UserRepository;
+import com.jurisflow.security.TenantAccessGuard;
 import com.jurisflow.security.UserPrincipal;
 import com.jurisflow.shared.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class TenantService {
     private final TenantMemberRepository tenantMemberRepository;
     private final UserRepository userRepository;
     private final GroupService groupService;
+    private final TenantAccessGuard tenantAccessGuard;
 
     @Transactional
     public TenantResponse create(TenantRequest request, UserPrincipal creator) {
@@ -58,7 +60,7 @@ public class TenantService {
     @Transactional
     public TenantResponse update(UUID tenantId, TenantRequest request, UserPrincipal principal) {
         Tenant tenant = findTenantById(tenantId);
-        requireMinRole(tenantId, principal.getId(), TenantRole.ADMIN);
+        tenantAccessGuard.requireMinRole(tenantId, principal.getId(), TenantRole.ADMIN);
         tenant.setNome(request.nome());
         tenant.setCnpj(request.cnpj());
         tenant.setTelefone(request.telefone());
@@ -66,18 +68,20 @@ public class TenantService {
         return toResponse(tenantRepository.save(tenant));
     }
 
-    public TenantResponse getById(UUID tenantId) {
+    public TenantResponse getById(UUID tenantId, UUID requesterId) {
+        tenantAccessGuard.requireActiveMember(tenantId, requesterId);
         return toResponse(findTenantById(tenantId));
     }
 
-    public Page<TenantMemberResponse> getMembers(UUID tenantId, Pageable pageable) {
+    public Page<TenantMemberResponse> getMembers(UUID tenantId, UUID requesterId, Pageable pageable) {
+        tenantAccessGuard.requireActiveMember(tenantId, requesterId);
         return tenantMemberRepository.findByTenantIdAndAtivoTrue(tenantId, pageable)
                 .map(this::toMemberResponse);
     }
 
     @Transactional
     public TenantMemberResponse addMemberByEmail(UUID tenantId, InviteMemberRequest request, UserPrincipal principal) {
-        requireMinRole(tenantId, principal.getId(), TenantRole.ADMIN);
+        tenantAccessGuard.requireMinRole(tenantId, principal.getId(), TenantRole.ADMIN);
 
         String email = request.email().toLowerCase().trim();
         TenantRole role = request.role() != null ? request.role() : TenantRole.MEMBER;
@@ -123,7 +127,7 @@ public class TenantService {
 
     @Transactional
     public void updateMemberRole(UUID tenantId, UUID userId, TenantRole newRole, UserPrincipal principal) {
-        requireMinRole(tenantId, principal.getId(), TenantRole.ADMIN);
+        tenantAccessGuard.requireMinRole(tenantId, principal.getId(), TenantRole.ADMIN);
         TenantMember member = tenantMemberRepository.findByTenantIdAndUser_Id(tenantId, userId)
                 .orElseThrow(() -> BusinessException.notFound("Membro"));
         if (member.getRole() == TenantRole.OWNER) {
@@ -135,7 +139,7 @@ public class TenantService {
 
     @Transactional
     public void removeMember(UUID tenantId, UUID userId, UserPrincipal principal) {
-        requireMinRole(tenantId, principal.getId(), TenantRole.ADMIN);
+        tenantAccessGuard.requireMinRole(tenantId, principal.getId(), TenantRole.ADMIN);
         TenantMember member = tenantMemberRepository.findByTenantIdAndUser_Id(tenantId, userId)
                 .orElseThrow(() -> BusinessException.notFound("Membro"));
         if (member.getRole() == TenantRole.OWNER) {
@@ -148,15 +152,6 @@ public class TenantService {
         // nao davam acesso de verdade (o TenantInterceptor ja bloqueia quem
         // nao e membro ativo), mas atrapalhavam uma readmissao futura
         groupService.removeAllAreasForUser(tenantId, userId);
-    }
-
-    // OWNER=0, ADMIN=1, MEMBER=2, VIEWER=3 — menor ordinal = mais permissão
-    private void requireMinRole(UUID tenantId, UUID userId, TenantRole minimum) {
-        TenantMember member = tenantMemberRepository.findActiveMember(tenantId, userId)
-                .orElseThrow(BusinessException::forbidden);
-        if (member.getRole().ordinal() > minimum.ordinal()) {
-            throw BusinessException.forbidden();
-        }
     }
 
     private Tenant findTenantById(UUID tenantId) {

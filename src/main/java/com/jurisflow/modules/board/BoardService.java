@@ -13,7 +13,10 @@ import com.jurisflow.modules.processo.ProcessoRepository;
 import com.jurisflow.modules.processo.dto.ProcessoResponse;
 import com.jurisflow.modules.tarefa.TarefaResumo;
 import com.jurisflow.modules.tarefa.TarefaService;
+import com.jurisflow.modules.tenant.TenantRole;
+import com.jurisflow.security.TenantAccessGuard;
 import com.jurisflow.security.TenantContext;
+import com.jurisflow.security.UserPrincipal;
 import com.jurisflow.shared.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -40,6 +43,7 @@ public class BoardService {
     private final TarefaService tarefaService;
     private final MovimentoService movimentoService;
     private final GroupService groupService;
+    private final TenantAccessGuard tenantAccessGuard;
 
     public List<BoardColumnResponse> getBoardByGroup(UUID groupId, UUID userId) {
         UUID tenantId = TenantContext.getCurrentTenantId();
@@ -107,8 +111,11 @@ public class BoardService {
     }
 
     @Transactional
-    public BoardColumnResponse createColumn(BoardColumnRequest request) {
+    public BoardColumnResponse createColumn(BoardColumnRequest request, UserPrincipal principal) {
         UUID tenantId = TenantContext.getCurrentTenantId();
+        requireColumnWriteAccess(tenantId, principal.getId(), request.groupId());
+        groupService.assertGroupInTenant(request.groupId(), tenantId);
+
         Integer maxPos = columnRepository.findMaxPosicaoByGroupId(request.groupId());
         int nextPos = maxPos != null ? maxPos + 1 : 0;
 
@@ -125,8 +132,9 @@ public class BoardService {
     }
 
     @Transactional
-    public BoardColumnResponse updateColumn(UUID columnId, BoardColumnRequest request) {
+    public BoardColumnResponse updateColumn(UUID columnId, BoardColumnRequest request, UserPrincipal principal) {
         BoardColumn column = findColumnInTenant(columnId);
+        requireColumnWriteAccess(column.getTenantId(), principal.getId(), column.getGroupId());
         column.setNome(request.nome());
         if (request.cor() != null) column.setCor(request.cor());
         columnRepository.save(column);
@@ -135,16 +143,33 @@ public class BoardService {
     }
 
     @Transactional
-    public void deleteColumn(UUID columnId) {
-        columnRepository.delete(findColumnInTenant(columnId));
+    public void deleteColumn(UUID columnId, UserPrincipal principal) {
+        BoardColumn column = findColumnInTenant(columnId);
+        requireColumnWriteAccess(column.getTenantId(), principal.getId(), column.getGroupId());
+        columnRepository.delete(column);
     }
 
     @Transactional
-    public void reorderColumns(ReorderRequest request) {
+    public void reorderColumns(ReorderRequest request, UserPrincipal principal) {
         for (int i = 0; i < request.columnIds().size(); i++) {
             BoardColumn column = findColumnInTenant(request.columnIds().get(i));
+            requireColumnWriteAccess(column.getTenantId(), principal.getId(), column.getGroupId());
             column.setPosicao(i);
             columnRepository.save(column);
+        }
+    }
+
+    /**
+     * Exige que o usuario seja pelo menos MEMBER do tenant (bloqueia so
+     * VIEWER) e, se nao for ADMIN/OWNER, que pertenca ao grupo da coluna —
+     * reaproveita a mesma restricao ja usada na leitura do board
+     * (resolveGroupRestriction), fechando o RBAC ausente aqui.
+     */
+    private void requireColumnWriteAccess(UUID tenantId, UUID userId, UUID groupId) {
+        tenantAccessGuard.requireMinRole(tenantId, userId, TenantRole.MEMBER);
+        var restriction = groupService.resolveGroupRestriction(tenantId, userId);
+        if (restriction.isPresent() && !restriction.get().contains(groupId)) {
+            throw BusinessException.forbidden();
         }
     }
 

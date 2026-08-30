@@ -34,8 +34,10 @@ public class TenantController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<TenantResponse> getById(@PathVariable UUID id) {
-        return ResponseEntity.ok(tenantService.getById(id));
+    public ResponseEntity<TenantResponse> getById(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(tenantService.getById(id, principal.getId()));
     }
 
     @PutMapping("/{id}")
@@ -49,8 +51,9 @@ public class TenantController {
     @GetMapping("/{id}/members")
     public ResponseEntity<Page<TenantMemberResponse>> getMembers(
             @PathVariable UUID id,
-            @PageableDefault(size = 20) Pageable pageable) {
-        return ResponseEntity.ok(tenantService.getMembers(id, pageable));
+            @PageableDefault(size = 20) Pageable pageable,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(tenantService.getMembers(id, principal.getId(), pageable));
     }
 
     @PostMapping("/{id}/members")

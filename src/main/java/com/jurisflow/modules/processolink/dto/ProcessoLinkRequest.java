@@ -1,5 +1,6 @@
 package com.jurisflow.modules.processolink.dto;
 
+import com.jurisflow.validation.SafeUrl;
 import jakarta.validation.constraints.NotBlank;
 
 public record ProcessoLinkRequest(
@@ -7,5 +8,6 @@ public record ProcessoLinkRequest(
     String nomeArquivo,
 
     @NotBlank(message = "Link e obrigatorio")
+    @SafeUrl
     String url
 ) {}

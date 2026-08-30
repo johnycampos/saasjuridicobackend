@@ -1,5 +1,6 @@
 package com.jurisflow.modules.user;
 
+import com.jurisflow.modules.tenant.TenantMemberRepository;
 import com.jurisflow.modules.user.dto.UserResponse;
 import com.jurisflow.shared.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -14,8 +15,17 @@ import java.util.UUID;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final TenantMemberRepository tenantMemberRepository;
 
-    public UserResponse getById(UUID id) {
+    /**
+     * Ver o proprio perfil sempre e permitido; ver o perfil de outro usuario
+     * exige compartilhar algum tenant ativo em comum (evita IDOR — antes
+     * qualquer usuario autenticado podia consultar qualquer UUID de usuario).
+     */
+    public UserResponse getById(UUID id, UUID requesterId) {
+        if (!id.equals(requesterId) && !tenantMemberRepository.existsSharedActiveTenant(requesterId, id)) {
+            throw BusinessException.forbidden();
+        }
         User user = userRepository.findById(id)
                 .orElseThrow(() -> BusinessException.notFound("Usuario"));
         return toResponse(user);

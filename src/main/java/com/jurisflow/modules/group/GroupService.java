@@ -10,6 +10,7 @@ import com.jurisflow.modules.tenant.TenantMemberRepository;
 import com.jurisflow.modules.tenant.TenantRole;
 import com.jurisflow.modules.user.User;
 import com.jurisflow.modules.user.UserRepository;
+import com.jurisflow.security.TenantAccessGuard;
 import com.jurisflow.security.TenantContext;
 import com.jurisflow.security.UserPrincipal;
 import com.jurisflow.shared.exception.BusinessException;
@@ -36,10 +37,12 @@ public class GroupService {
     private final ProcessoRepository processoRepository;
     private final BoardColumnRepository boardColumnRepository;
     private final TenantMemberRepository tenantMemberRepository;
+    private final TenantAccessGuard tenantAccessGuard;
 
     @Transactional
     public GroupResponse create(GroupRequest request, UserPrincipal principal) {
         UUID tenantId = TenantContext.getCurrentTenantId();
+        tenantAccessGuard.requireMinRole(tenantId, principal.getId(), TenantRole.ADMIN);
 
         Group group = new Group();
         group.setTenantId(tenantId);
@@ -82,7 +85,8 @@ public class GroupService {
     }
 
     @Transactional
-    public GroupResponse update(UUID groupId, GroupRequest request) {
+    public GroupResponse update(UUID groupId, GroupRequest request, UserPrincipal principal) {
+        tenantAccessGuard.requireMinRole(TenantContext.getCurrentTenantId(), principal.getId(), TenantRole.ADMIN);
         Group group = findGroupInTenant(groupId);
         group.setNome(request.nome());
         if (request.descricao() != null) group.setDescricao(request.descricao());
@@ -91,12 +95,14 @@ public class GroupService {
     }
 
     @Transactional
-    public void delete(UUID groupId) {
+    public void delete(UUID groupId, UserPrincipal principal) {
+        tenantAccessGuard.requireMinRole(TenantContext.getCurrentTenantId(), principal.getId(), TenantRole.ADMIN);
         groupRepository.delete(findGroupInTenant(groupId));
     }
 
     @Transactional
-    public void addMember(UUID groupId, UUID userId) {
+    public void addMember(UUID groupId, UUID userId, UserPrincipal principal) {
+        tenantAccessGuard.requireMinRole(TenantContext.getCurrentTenantId(), principal.getId(), TenantRole.ADMIN);
         findGroupInTenant(groupId);
         if (groupMemberRepository.existsByGroupIdAndUser_Id(groupId, userId)) {
             throw BusinessException.conflict("Usuario ja e membro deste grupo");
@@ -112,7 +118,8 @@ public class GroupService {
     }
 
     @Transactional
-    public void removeMember(UUID groupId, UUID userId) {
+    public void removeMember(UUID groupId, UUID userId, UserPrincipal principal) {
+        tenantAccessGuard.requireMinRole(TenantContext.getCurrentTenantId(), principal.getId(), TenantRole.ADMIN);
         findGroupInTenant(groupId);
         groupMemberRepository.deleteByGroupIdAndUser_Id(groupId, userId);
     }
@@ -182,6 +189,16 @@ public class GroupService {
                 .orElseThrow(() -> BusinessException.notFound("Grupo"));
         if (!group.getTenantId().equals(tenantId)) throw BusinessException.forbidden();
         return group;
+    }
+
+    /**
+     * Confirma que um grupo pertence ao tenant informado — usado por outros
+     * modulos (ex: BoardService.createColumn) que recebem um groupId vindo
+     * do cliente e precisam evitar associar dados a um grupo de outro tenant.
+     */
+    public void assertGroupInTenant(UUID groupId, UUID tenantId) {
+        groupRepository.findByIdAndTenantId(groupId, tenantId)
+                .orElseThrow(() -> BusinessException.notFound("Grupo"));
     }
 
     private GroupResponse toResponse(Group g) {

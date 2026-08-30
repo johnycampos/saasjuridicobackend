@@ -40,29 +40,34 @@ public class GroupController {
     @PutMapping("/{id}")
     public ResponseEntity<GroupResponse> update(
             @PathVariable UUID id,
-            @Valid @RequestBody GroupRequest request) {
-        return ResponseEntity.ok(groupService.update(id, request));
+            @Valid @RequestBody GroupRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(groupService.update(id, request, principal));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        groupService.delete(id);
+    public ResponseEntity<Void> delete(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        groupService.delete(id, principal);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{id}/members")
     public ResponseEntity<Void> addMember(
             @PathVariable UUID id,
-            @RequestBody Map<String, UUID> body) {
-        groupService.addMember(id, body.get("userId"));
+            @RequestBody Map<String, UUID> body,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        groupService.addMember(id, body.get("userId"), principal);
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     @DeleteMapping("/{id}/members/{userId}")
     public ResponseEntity<Void> removeMember(
             @PathVariable UUID id,
-            @PathVariable UUID userId) {
-        groupService.removeMember(id, userId);
+            @PathVariable UUID userId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        groupService.removeMember(id, userId, principal);
         return ResponseEntity.noContent().build();
     }
 }

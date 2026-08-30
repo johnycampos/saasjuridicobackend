@@ -18,11 +18,13 @@ public class UserController {
 
     @GetMapping("/me")
     public ResponseEntity<UserResponse> me(@AuthenticationPrincipal UserPrincipal principal) {
-        return ResponseEntity.ok(userService.getById(principal.getId()));
+        return ResponseEntity.ok(userService.getById(principal.getId(), principal.getId()));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserResponse> getById(@PathVariable UUID id) {
-        return ResponseEntity.ok(userService.getById(id));
+    public ResponseEntity<UserResponse> getById(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(userService.getById(id, principal.getId()));
     }
 }

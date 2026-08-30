@@ -24,4 +24,13 @@ public interface TenantMemberRepository extends JpaRepository<TenantMember, UUID
     Optional<TenantMember> findActiveMember(UUID tenantId, UUID userId);
 
     Optional<TenantMember> findFirstByUser_IdAndAtivoTrue(UUID userId);
+
+    @Query("""
+        SELECT CASE WHEN COUNT(tm1) > 0 THEN true ELSE false END
+        FROM TenantMember tm1
+        JOIN TenantMember tm2 ON tm2.tenantId = tm1.tenantId
+        WHERE tm1.user.id = :userIdA AND tm2.user.id = :userIdB
+          AND tm1.ativo = true AND tm2.ativo = true
+    """)
+    boolean existsSharedActiveTenant(UUID userIdA, UUID userIdB);
 }
