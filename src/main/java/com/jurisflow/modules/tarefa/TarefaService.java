@@ -43,6 +43,7 @@ public class TarefaService {
         tarefa.setDescricao(request.descricao());
         tarefa.setPrioridade(request.prioridade() != null ? request.prioridade() : PrioridadeTipo.MEDIA);
         tarefa.setPrazo(request.prazo());
+        tarefa.setHoraPrazo(request.horaPrazo());
         tarefa.setCreatedBy(principal.getId());
 
         return toResponse(tarefaRepository.save(tarefa));
@@ -85,10 +86,14 @@ public class TarefaService {
     }
 
     public List<Tarefa> listAgendaSemana(LocalDate inicio, LocalDate fim, Optional<Set<UUID>> restriction) {
+        return listAgendaMes(inicio, fim, restriction);
+    }
+
+    public List<Tarefa> listAgendaMes(LocalDate inicio, LocalDate fim, Optional<Set<UUID>> restriction) {
         UUID tenantId = TenantContext.getCurrentTenantId();
         return restriction.isEmpty()
-                ? tarefaRepository.findAgendaSemana(tenantId, inicio, fim)
-                : tarefaRepository.findAgendaSemanaInGroups(tenantId, inicio, fim, restriction.get());
+                ? tarefaRepository.findByTenantIdAndPrazoBetween(tenantId, inicio, fim)
+                : tarefaRepository.findByTenantIdAndPrazoBetweenInGroups(tenantId, inicio, fim, restriction.get());
     }
 
     private void validateProcessoInTenant(UUID processoId, UUID tenantId) {
@@ -98,7 +103,7 @@ public class TarefaService {
 
     private TarefaResponse toResponse(Tarefa t) {
         return new TarefaResponse(t.getId(), t.getTenantId(), t.getProcessoId(), t.getTitulo(),
-                t.getDescricao(), t.getPrioridade(), t.getPrazo(), t.getConcluida(),
+                t.getDescricao(), t.getPrioridade(), t.getPrazo(), t.getHoraPrazo(), t.getConcluida(),
                 t.getConcluidaEm(), t.getConcluidaPor(), t.getCreatedBy(),
                 t.getCreatedAt(), t.getUpdatedAt());
     }

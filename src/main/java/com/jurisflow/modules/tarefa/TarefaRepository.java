@@ -21,9 +21,9 @@ public interface TarefaRepository extends JpaRepository<Tarefa, UUID> {
         WHERE t.tenantId = :tenantId
         AND t.concluida = false
         AND t.prazo BETWEEN :inicio AND :fim
-        ORDER BY t.prazo ASC
+        ORDER BY t.prazo ASC, t.prioridade ASC
     """)
-    List<Tarefa> findAgendaSemana(UUID tenantId, LocalDate inicio, LocalDate fim);
+    List<Tarefa> findByTenantIdAndPrazoBetween(UUID tenantId, LocalDate inicio, LocalDate fim);
 
     @Query("""
         SELECT t FROM Tarefa t
@@ -33,7 +33,7 @@ public interface TarefaRepository extends JpaRepository<Tarefa, UUID> {
         AND t.processoId IN (
             SELECT p.id FROM Processo p WHERE p.tenantId = :tenantId AND p.groupId IN :groupIds
         )
-        ORDER BY t.prazo ASC
+        ORDER BY t.prazo ASC, t.prioridade ASC
     """)
-    List<Tarefa> findAgendaSemanaInGroups(UUID tenantId, LocalDate inicio, LocalDate fim, Collection<UUID> groupIds);
+    List<Tarefa> findByTenantIdAndPrazoBetweenInGroups(UUID tenantId, LocalDate inicio, LocalDate fim, Collection<UUID> groupIds);
 }

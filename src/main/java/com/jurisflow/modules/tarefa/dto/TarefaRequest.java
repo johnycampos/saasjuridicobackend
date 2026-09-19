@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 public record TarefaRequest(
     @NotBlank(message = "Titulo e obrigatorio")
@@ -13,5 +14,6 @@ public record TarefaRequest(
 
     String descricao,
     PrioridadeTipo prioridade,
-    LocalDate prazo
+    LocalDate prazo,
+    LocalTime horaPrazo
 ) {}

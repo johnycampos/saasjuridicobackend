@@ -12,6 +12,7 @@ import lombok.Setter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.UUID;
 
 @Getter
@@ -33,6 +34,9 @@ public class Tarefa extends TenantEntity {
     private PrioridadeTipo prioridade = PrioridadeTipo.MEDIA;
 
     private LocalDate prazo;
+
+    @Column(name = "hora_prazo")
+    private LocalTime horaPrazo;
 
     private Boolean concluida = false;
 

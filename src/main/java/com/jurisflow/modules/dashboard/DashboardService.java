@@ -78,6 +78,7 @@ public class DashboardService {
 
         var processoIds = tarefas.stream().map(Tarefa::getProcessoId).collect(Collectors.toSet());
         Map<UUID, Processo> processosPorId = processoRepository.findAllById(processoIds).stream()
+                .filter(p -> tenantId.equals(p.getTenantId())) // defense-in-depth
                 .collect(Collectors.toMap(Processo::getId, p -> p));
 
         var clienteIds = processosPorId.values().stream().map(Processo::getClienteId)
@@ -90,7 +91,7 @@ public class DashboardService {
             String numero = p != null ? p.getNumeroProcesso() : null;
             String clienteNome = p != null && p.getClienteId() != null ? clienteNomes.get(p.getClienteId()) : null;
             return new AgendaTarefaResponse(t.getId(), t.getProcessoId(), numero, clienteNome,
-                    t.getTitulo(), t.getPrioridade(), t.getPrazo());
+                    t.getTitulo(), t.getPrioridade(), t.getPrazo(), t.getHoraPrazo());
         }).toList();
     }
 

@@ -1,9 +1,12 @@
 package com.jurisflow.modules.processo;
 
+import com.jurisflow.modules.processo.dto.DataJudSyncResponse;
 import com.jurisflow.modules.processo.dto.MoveProcessoAreaRequest;
 import com.jurisflow.modules.processo.dto.MoveProcessoRequest;
 import com.jurisflow.modules.processo.dto.ProcessoRequest;
 import com.jurisflow.modules.processo.dto.ProcessoResponse;
+import com.jurisflow.security.TenantAccessGuard;
+import com.jurisflow.security.TenantContext;
 import com.jurisflow.security.UserPrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +26,8 @@ import java.util.UUID;
 public class ProcessoController {
 
     private final ProcessoService processoService;
+    private final DataJudSyncService dataJudSyncService;
+    private final TenantAccessGuard tenantAccessGuard;
 
     @GetMapping
     public ResponseEntity<Page<ProcessoResponse>> list(
@@ -74,6 +79,15 @@ public class ProcessoController {
             @Valid @RequestBody MoveProcessoAreaRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(processoService.moveToGroup(id, request.groupId(), principal));
+    }
+
+    @PostMapping("/{id}/atualizar-datajud")
+    public ResponseEntity<DataJudSyncResponse> atualizarDataJud(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        UUID tenantId = TenantContext.getCurrentTenantId();
+        tenantAccessGuard.requireActiveMember(tenantId, principal.getId());
+        return ResponseEntity.ok(dataJudSyncService.sincronizar(id, tenantId));
     }
 
     @DeleteMapping("/{id}")

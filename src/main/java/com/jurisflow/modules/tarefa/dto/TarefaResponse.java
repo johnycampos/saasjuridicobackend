@@ -4,6 +4,7 @@ import com.jurisflow.modules.processo.PrioridadeTipo;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.UUID;
 
 public record TarefaResponse(
@@ -14,6 +15,7 @@ public record TarefaResponse(
     String descricao,
     PrioridadeTipo prioridade,
     LocalDate prazo,
+    LocalTime horaPrazo,
     Boolean concluida,
     LocalDateTime concluidaEm,
     UUID concluidaPor,

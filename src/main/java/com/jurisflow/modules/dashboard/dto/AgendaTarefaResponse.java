@@ -3,6 +3,7 @@ package com.jurisflow.modules.dashboard.dto;
 import com.jurisflow.modules.processo.PrioridadeTipo;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.UUID;
 
 public record AgendaTarefaResponse(
@@ -12,5 +13,6 @@ public record AgendaTarefaResponse(
     String clienteNome,
     String titulo,
     PrioridadeTipo prioridade,
-    LocalDate prazo
+    LocalDate prazo,
+    LocalTime horaPrazo
 ) {}

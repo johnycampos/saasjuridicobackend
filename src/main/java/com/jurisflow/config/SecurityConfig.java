@@ -40,7 +40,7 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/login/**", "/oauth2/**", "/api/invites/accept/**", "/actuator/health").permitAll()
+                .requestMatchers("/api/auth/**", "/login/**", "/oauth2/**", "/api/invites/accept/**", "/actuator/health", "/api/google-calendar/callback").permitAll()
                 // autenticado pelo ApiKeyAuthFilter (header X-Api-Key), nao por
                 // OAuth2/JWT de usuario — ver com.jurisflow.security.ApiKeyAuthFilter
                 .requestMatchers("/api/integrations/**").permitAll()

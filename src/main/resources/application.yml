@@ -86,3 +86,13 @@ app:
   # (script externo, ver com.jurisflow.security.ApiKeyAuthFilter). Sem default:
   # se nao configurada, toda chamada ao endpoint eh rejeitada (falha segura).
   integrations-api-key: ${INTEGRATIONS_API_KEY:}
+  google-calendar:
+    client-id: ${GOOGLE_CALENDAR_CLIENT_ID:}
+    client-secret: ${GOOGLE_CALENDAR_CLIENT_SECRET:}
+    redirect-uri: ${GOOGLE_CALENDAR_REDIRECT_URI:http://localhost:8080/api/google-calendar/callback}
+    token-encryption-key: ${CALENDAR_TOKEN_ENCRYPTION_KEY:}
+  datajud:
+    base-url: ${DATAJUD_SYNC_BASE_URL:}
+    api-key: ${DATAJUD_SYNC_API_KEY:}
+    rate-limit-seconds: ${DATAJUD_RATE_LIMIT_SECONDS:60}
+
