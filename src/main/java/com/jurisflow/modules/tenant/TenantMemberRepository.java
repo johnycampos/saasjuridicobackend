@@ -19,6 +19,7 @@ public interface TenantMemberRepository extends JpaRepository<TenantMember, UUID
     boolean existsByUser_IdAndAtivoTrue(UUID userId);
     boolean existsByUser_EmailAndRoleAndAtivoTrue(String email, TenantRole role);
     List<TenantMember> findByUser_IdAndStatusAndAtivoTrue(UUID userId, TenantMemberStatus status);
+    List<TenantMember> findByUser_IdAndAtivoTrue(UUID userId);
 
     @Query("SELECT tm FROM TenantMember tm WHERE tm.tenantId = :tenantId AND tm.user.id = :userId AND tm.ativo = true")
     Optional<TenantMember> findActiveMember(UUID tenantId, UUID userId);

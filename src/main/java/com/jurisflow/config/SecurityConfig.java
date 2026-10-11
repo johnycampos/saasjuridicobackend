@@ -28,6 +28,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final ApiKeyAuthFilter apiKeyAuthFilter;
+    private final com.jurisflow.security.McpTokenAuthFilter mcpTokenAuthFilter;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
 
     @Value("${app.cors-origins}")
@@ -41,13 +42,19 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**", "/login/**", "/oauth2/**", "/api/invites/accept/**", "/actuator/health", "/api/google-calendar/callback").permitAll()
+                .requestMatchers("/.well-known/**", "/oauth/authorize", "/oauth/token", "/oauth/register", "/oauth/revoke").permitAll()
                 // autenticado pelo ApiKeyAuthFilter (header X-Api-Key), nao por
                 // OAuth2/JWT de usuario — ver com.jurisflow.security.ApiKeyAuthFilter
                 .requestMatchers("/api/integrations/**").permitAll()
+                .requestMatchers("/mcp", "/mcp/**").permitAll()
                 .anyRequest().authenticated()
             )
+            .exceptionHandling(exceptions -> exceptions.defaultAuthenticationEntryPointFor(
+                new org.springframework.security.web.authentication.HttpStatusEntryPoint(org.springframework.http.HttpStatus.UNAUTHORIZED),
+                new org.springframework.security.web.util.matcher.AntPathRequestMatcher("/api/**")))
             .oauth2Login(oauth2 -> oauth2.successHandler(oAuth2SuccessHandler))
             .addFilterBefore(apiKeyAuthFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(mcpTokenAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -62,7 +69,20 @@ public class SecurityConfig {
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
 
+        CorsConfiguration mcpOAuthConfig = new CorsConfiguration();
+        mcpOAuthConfig.setAllowedOrigins(List.of("*"));
+        mcpOAuthConfig.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
+        mcpOAuthConfig.setAllowedHeaders(List.of("*"));
+        mcpOAuthConfig.setAllowCredentials(false);
+        mcpOAuthConfig.setMaxAge(3600L);
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/.well-known/**", mcpOAuthConfig);
+        source.registerCorsConfiguration("/oauth/token", mcpOAuthConfig);
+        source.registerCorsConfiguration("/oauth/register", mcpOAuthConfig);
+        source.registerCorsConfiguration("/oauth/revoke", mcpOAuthConfig);
+        source.registerCorsConfiguration("/mcp", mcpOAuthConfig);
+        source.registerCorsConfiguration("/mcp/**", mcpOAuthConfig);
         source.registerCorsConfiguration("/**", config);
         return source;
     }

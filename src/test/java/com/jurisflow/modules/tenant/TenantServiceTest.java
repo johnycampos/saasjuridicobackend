@@ -17,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -41,6 +42,12 @@ class TenantServiceTest {
 
     @Mock
     private TenantAccessGuard tenantAccessGuard;
+
+    @Mock
+    private com.jurisflow.modules.mcp.McpTokenRepository mcpTokenRepository;
+
+    @Mock
+    private com.jurisflow.modules.mcp.oauth.repository.OAuthRefreshTokenRepository oauthRefreshTokenRepository;
 
     @InjectMocks
     private TenantService tenantService;
@@ -147,10 +154,17 @@ class TenantServiceTest {
         when(tenantMemberRepository.findByTenantIdAndUser_Id(tenantId, userId))
                 .thenReturn(Optional.of(targetMember));
 
+        UUID familyId = UUID.randomUUID();
+        when(oauthRefreshTokenRepository.findActiveFamilyIdsForUser(tenantId, userId))
+                .thenReturn(List.of(familyId));
+
         tenantService.removeMember(tenantId, userId, principal);
 
         assertThat(targetMember.getAtivo()).isFalse();
+        verify(oauthRefreshTokenRepository).lockFamily(familyId);
         verify(groupService).removeAllAreasForUser(tenantId, userId);
+        verify(mcpTokenRepository).revokeAll(eq(tenantId), eq(userId), any(java.time.Instant.class));
+        verify(oauthRefreshTokenRepository).revokeAll(eq(tenantId), eq(userId), any(java.time.Instant.class));
     }
 
     @Test

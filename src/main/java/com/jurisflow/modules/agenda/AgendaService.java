@@ -25,6 +25,7 @@ import com.jurisflow.shared.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -58,6 +59,8 @@ public class AgendaService {
         }
     }
 
+    // As leituras locais são independentes; não manter uma transação aberta durante o HTTP ao Google.
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public AgendaCompletaResponse getAgendaCompleta(int ano, int mes, UserPrincipal principal) {
         validateAnoMes(ano, mes);
 
@@ -258,10 +261,12 @@ public class AgendaService {
         return new AgendaCompletaResponse(eventos, resumo);
     }
 
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public List<AgendaEventoResponse> getEventosMes(int ano, int mes, UserPrincipal principal) {
         return getAgendaCompleta(ano, mes, principal).eventos();
     }
 
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public AgendaResumoResponse getResumoMes(int ano, int mes, UserPrincipal principal) {
         return getAgendaCompleta(ano, mes, principal).resumo();
     }

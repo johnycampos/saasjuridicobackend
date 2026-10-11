@@ -95,6 +95,12 @@ public class ProcessoService {
         return toResponsePage(page);
     }
 
+    public Page<ProcessoResponse> searchByGroup(UUID groupId, String q, Pageable pageable, UUID userId) {
+        UUID tenantId = TenantContext.getCurrentTenantId();
+        requireGroupAccess(tenantId, userId, groupId);
+        return toResponsePage(processoRepository.searchByGroup(tenantId, groupId, q, pageable));
+    }
+
     public ProcessoResponse getById(UUID id, UUID userId) {
         UUID tenantId = TenantContext.getCurrentTenantId();
         Processo processo = processoRepository.findByIdAndTenantId(id, tenantId)

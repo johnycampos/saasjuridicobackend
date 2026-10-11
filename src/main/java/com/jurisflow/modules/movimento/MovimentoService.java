@@ -25,11 +25,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -52,6 +50,15 @@ public class MovimentoService {
                 .stream().map(this::toResponse).toList();
     }
 
+    public List<MovimentoResponse> listByProcesso(UUID processoId, int limite) {
+        if (limite < 1 || limite > 100) throw new BusinessException("Limite deve estar entre 1 e 100");
+        UUID tenantId = TenantContext.getCurrentTenantId();
+        validateProcessoInTenant(processoId, tenantId);
+        return movimentoRepository.findByTenantIdAndProcessoIdOrderByDataHoraDesc(
+                tenantId, processoId, org.springframework.data.domain.PageRequest.of(0, limite))
+            .stream().map(this::toResponse).toList();
+    }
+
     @Transactional
     public MovimentoResponse toggleVisualizado(UUID id, boolean visualizado, UserPrincipal principal) {
         UUID tenantId = TenantContext.getCurrentTenantId();
@@ -68,16 +75,9 @@ public class MovimentoService {
     public Map<UUID, MovimentoResumo> resumoPorProcesso(Collection<UUID> processoIds) {
         if (processoIds.isEmpty()) return Map.of();
 
-        return movimentoRepository.findByProcessoIdIn(processoIds).stream()
-                .collect(Collectors.groupingBy(Movimento::getProcessoId))
-                .entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> {
-                    var movs = e.getValue();
-                    var ultima = movs.stream().map(Movimento::getDataHora).filter(Objects::nonNull)
-                            .max(Comparator.naturalOrder()).orElse(null);
-                    var naoLida = movs.stream().anyMatch(m -> !Boolean.TRUE.equals(m.getVisualizado()));
-                    return new MovimentoResumo(ultima, naoLida);
-                }));
+        return movimentoRepository.aggregateResumoPorProcesso(processoIds).stream()
+                .collect(Collectors.toMap(MovimentoRepository.ResumoProjection::getProcessoId,
+                        r -> new MovimentoResumo(r.getUltimaMovimentacao(), Boolean.TRUE.equals(r.getNaoLida()))));
     }
 
     /**

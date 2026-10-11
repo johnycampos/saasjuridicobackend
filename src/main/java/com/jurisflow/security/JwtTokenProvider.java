@@ -66,6 +66,15 @@ public class JwtTokenProvider {
         }
     }
 
+    public boolean validateToken(String token, String expectedType) {
+        try {
+            return expectedType != null && expectedType.equals(parseToken(token).get("type", String.class));
+        } catch (JwtException | IllegalArgumentException ex) {
+            log.error("Invalid JWT token: {}", ex.getMessage());
+            return false;
+        }
+    }
+
     private Claims parseToken(String token) {
         return Jwts.parser()
                 .verifyWith(key)

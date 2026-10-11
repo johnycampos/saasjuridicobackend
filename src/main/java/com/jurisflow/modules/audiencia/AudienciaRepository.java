@@ -16,6 +16,10 @@ public interface AudienciaRepository extends JpaRepository<Audiencia, UUID> {
 
     Optional<Audiencia> findByIdAndTenantId(UUID id, UUID tenantId);
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT a FROM Audiencia a WHERE a.id = :id AND a.tenantId = :tenantId")
+    Optional<Audiencia> findByIdAndTenantIdForUpdate(@Param("id") UUID id, @Param("tenantId") UUID tenantId);
+
     List<Audiencia> findByTenantIdAndStatusNotOrderByDataAscHoraAsc(UUID tenantId, String status);
 
     List<Audiencia> findByProcessoIdAndTenantIdAndStatusNotOrderByDataAscHoraAsc(UUID processoId, UUID tenantId, String status);

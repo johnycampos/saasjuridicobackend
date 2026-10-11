@@ -96,6 +96,21 @@ public class ContratoService {
         return toParcelaResponse(parcelaRepository.save(parcela));
     }
 
+    @Transactional
+    public void deleteParcela(UUID parcelaId, UserPrincipal principal) {
+        UUID tenantId = TenantContext.getCurrentTenantId();
+        Parcela parcela = parcelaRepository.findByIdAndTenantId(parcelaId, tenantId)
+                .orElseThrow(() -> new BusinessException("Parcela ja paga ou inexistente"));
+        Contrato contrato = contratoRepository.findByIdAndTenantId(parcela.getContratoId(), tenantId)
+                .orElseThrow(() -> BusinessException.notFound("Contrato"));
+        findProcessoComAcesso(contrato.getProcessoId(), tenantId, principal.getId());
+
+        int deleted = parcelaRepository.deleteAtomicPendente(parcelaId, tenantId);
+        if (deleted == 0) {
+            throw new BusinessException("Parcela ja paga ou inexistente");
+        }
+    }
+
     public List<ClienteProcessoFinanceiroResponse> listProcessosDoCliente(UUID clienteId, UUID userId) {
         UUID tenantId = TenantContext.getCurrentTenantId();
         clienteRepository.findByIdAndTenantId(clienteId, tenantId)

@@ -29,6 +29,10 @@ public interface ProcessoRepository extends JpaRepository<Processo, UUID> {
 
     Optional<Processo> findByIdAndTenantId(UUID id, UUID tenantId);
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Processo p WHERE p.id = :id AND p.tenantId = :tenantId")
+    Optional<Processo> findByIdAndTenantIdForUpdate(UUID id, UUID tenantId);
+
     long countByGroupIdAndStatus(UUID groupId, ProcessoStatus status);
 
     @Query("""
@@ -44,6 +48,21 @@ public interface ProcessoRepository extends JpaRepository<Processo, UUID> {
         )
     """)
     Page<Processo> search(UUID tenantId, String q, Pageable pageable);
+
+    @Query("""
+        SELECT p FROM Processo p
+        WHERE p.tenantId = :tenantId
+        AND p.groupId = :groupId
+        AND (
+            LOWER(p.numeroProcesso) LIKE LOWER(CONCAT('%', :q, '%'))
+            OR LOWER(p.reu) LIKE LOWER(CONCAT('%', :q, '%'))
+            OR EXISTS (
+                SELECT 1 FROM Cliente c
+                WHERE c.id = p.clienteId AND LOWER(c.nome) LIKE LOWER(CONCAT('%', :q, '%'))
+            )
+        )
+    """)
+    Page<Processo> searchByGroup(UUID tenantId, UUID groupId, String q, Pageable pageable);
 
     @Query("""
         SELECT p FROM Processo p

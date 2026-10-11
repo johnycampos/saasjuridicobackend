@@ -16,6 +16,10 @@ public interface ParcelaRepository extends JpaRepository<Parcela, UUID> {
     List<Parcela> findByContratoIdInOrderByNumeroAsc(Collection<UUID> contratoIds);
     Optional<Parcela> findByIdAndTenantId(UUID id, UUID tenantId);
 
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("DELETE FROM Parcela p WHERE p.id = :id AND p.tenantId = :tenantId AND p.status = com.jurisflow.modules.financeiro.ParcelaStatus.PENDENTE")
+    int deleteAtomicPendente(@org.springframework.data.repository.query.Param("id") UUID id, @org.springframework.data.repository.query.Param("tenantId") UUID tenantId);
+
     @Query("""
         SELECT p FROM Parcela p
         WHERE p.tenantId = :tenantId

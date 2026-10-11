@@ -22,7 +22,7 @@ public class AuthController {
 
     @PostMapping("/refresh")
     public ResponseEntity<TokenResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
-        if (!tokenProvider.validateToken(request.refreshToken())) {
+        if (!tokenProvider.validateToken(request.refreshToken(), "REFRESH")) {
             return ResponseEntity.badRequest().build();
         }
         var userId = tokenProvider.getUserIdFromToken(request.refreshToken());

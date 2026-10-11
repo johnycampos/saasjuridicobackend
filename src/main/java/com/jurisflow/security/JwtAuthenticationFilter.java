@@ -24,12 +24,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenProvider tokenProvider;
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return request.getRequestURI().substring(request.getContextPath().length()).startsWith("/mcp");
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         try {
             String jwt = extractToken(request);
-            if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt)) {
+            if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt, "ACCESS")) {
                 var userId = tokenProvider.getUserIdFromToken(jwt);
                 var email = tokenProvider.getEmailFromToken(jwt);
                 var principal = new UserPrincipal(userId, email, "", "");

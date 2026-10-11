@@ -35,6 +35,29 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class MovimentoServiceTest {
 
+    @Test void resumoUsesOnlyDatabaseAggregatesAndPreservesNullDateAndUnreadFlag() {
+        var ids = List.of(UUID.randomUUID(), UUID.randomUUID());
+        var unread = org.mockito.Mockito.mock(MovimentoRepository.ResumoProjection.class);
+        var read = org.mockito.Mockito.mock(MovimentoRepository.ResumoProjection.class);
+        var latest = java.time.LocalDateTime.of(2026, 10, 11, 14, 30);
+        when(unread.getProcessoId()).thenReturn(ids.get(0));
+        when(unread.getNaoLida()).thenReturn(true);
+        when(read.getProcessoId()).thenReturn(ids.get(1));
+        when(read.getUltimaMovimentacao()).thenReturn(latest);
+        when(read.getNaoLida()).thenReturn(false);
+        when(movimentoRepository.aggregateResumoPorProcesso(ids)).thenReturn(List.of(unread, read));
+        var result = movimentoService.resumoPorProcesso(ids);
+        assertThat(result).containsEntry(ids.get(0), new MovimentoResumo(null, true))
+            .containsEntry(ids.get(1), new MovimentoResumo(latest, false));
+        verify(movimentoRepository).aggregateResumoPorProcesso(ids);
+        verify(movimentoRepository, org.mockito.Mockito.never()).findByProcessoIdIn(any());
+    }
+
+    @Test void emptyResumoDoesNotQueryDatabase() {
+        assertThat(movimentoService.resumoPorProcesso(List.of())).isEmpty();
+        org.mockito.Mockito.verifyNoInteractions(movimentoRepository);
+    }
+
     @Mock
     private MovimentoRepository movimentoRepository;
 

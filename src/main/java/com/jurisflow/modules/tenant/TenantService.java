@@ -31,6 +31,8 @@ public class TenantService {
     private final UserRepository userRepository;
     private final GroupService groupService;
     private final TenantAccessGuard tenantAccessGuard;
+    private final com.jurisflow.modules.mcp.McpTokenRepository mcpTokenRepository;
+    private final com.jurisflow.modules.mcp.oauth.repository.OAuthRefreshTokenRepository oauthRefreshTokenRepository;
 
     @Transactional
     public TenantResponse create(TenantRequest request, UserPrincipal creator) {
@@ -147,6 +149,12 @@ public class TenantService {
         }
         member.setAtivo(false);
         tenantMemberRepository.save(member);
+        java.util.List<UUID> families = oauthRefreshTokenRepository.findActiveFamilyIdsForUser(tenantId, userId);
+        for (UUID familyId : families) {
+            oauthRefreshTokenRepository.lockFamily(familyId);
+        }
+        mcpTokenRepository.revokeAll(tenantId, userId, java.time.Instant.now());
+        oauthRefreshTokenRepository.revokeAll(tenantId, userId, java.time.Instant.now());
 
         // sem isso, as areas concedidas ficavam "orfas" em group_members —
         // nao davam acesso de verdade (o TenantInterceptor ja bloqueia quem

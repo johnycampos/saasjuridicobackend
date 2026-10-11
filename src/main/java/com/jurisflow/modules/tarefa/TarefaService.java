@@ -69,6 +69,14 @@ public class TarefaService {
         return toResponse(tarefaRepository.save(tarefa));
     }
 
+    @Transactional
+    public void delete(UUID id) {
+        UUID tenantId = TenantContext.getCurrentTenantId();
+        Tarefa tarefa = tarefaRepository.findByIdAndTenantId(id, tenantId)
+                .orElseThrow(() -> BusinessException.notFound("Tarefa"));
+        tarefaRepository.delete(tarefa);
+    }
+
     public Map<UUID, TarefaResumo> resumoPorProcesso(Collection<UUID> processoIds) {
         if (processoIds.isEmpty()) return Map.of();
 
