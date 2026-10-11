@@ -35,7 +35,7 @@ class McpControllerTest {
                 """.formatted(version)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.result.protocolVersion").value(version.equals("unknown") ? "2025-06-18" : version))
                 .andExpect(jsonPath("$.result.serverInfo.name").value("jurisflow"))
-                .andExpect(jsonPath("$.result.serverInfo.version").value("1.0.0"))
+                .andExpect(jsonPath("$.result.serverInfo.version").value("1.1.0"))
                 .andExpect(jsonPath("$.result.capabilities.tools.listChanged").value(false));
         }
     }

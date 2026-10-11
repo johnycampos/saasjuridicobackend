@@ -42,7 +42,7 @@ public class McpController {
                 String version = params.path("protocolVersion").asText();
                 if (!Set.of("2025-06-18", "2025-03-26", "2024-11-05").contains(version)) version = "2025-06-18";
                 result = Map.of("protocolVersion", version, "capabilities", Map.of("tools", Map.of("listChanged", false)),
-                    "serverInfo", Map.of("name", "jurisflow", "version", "1.0.0"),
+                    "serverInfo", Map.of("name", "jurisflow", "version", "1.1.0"),
                     "instructions", "Consulte e crie processos e tarefas nas áreas autorizadas do seu escritório. Escritas exigem papel MEMBER ou superior.");
             }
             case "ping" -> result = Map.of();
