@@ -10,6 +10,8 @@ import com.jurisflow.modules.financeiro.dto.ParcelaRequest;
 import com.jurisflow.modules.financeiro.dto.ParcelaResponse;
 import com.jurisflow.modules.group.GroupService;
 import com.jurisflow.modules.mcp.server.McpCallContext;
+import com.jurisflow.modules.movimento.MovimentoService;
+import com.jurisflow.modules.movimento.dto.MovimentoResponse;
 import com.jurisflow.modules.processo.ProcessoRepository;
 import com.jurisflow.modules.processo.ProcessoService;
 import com.jurisflow.modules.tarefa.TarefaRepository;
@@ -20,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -33,6 +36,14 @@ public class McpWriteService {
     private final ContratoRepository contratoRepository;
     private final ParcelaRepository parcelaRepository;
     private final ContratoService contratoService;
+    private final MovimentoService movimentoService;
+
+    @Transactional
+    public MovimentoResponse adicionarMovimentacao(
+            UUID processoId, String nome, LocalDateTime dataHora, String texto, McpCallContext ctx) {
+        lockAndRequireArea(processoId, ctx);
+        return movimentoService.adicionarManual(processoId, nome, dataHora, texto, ctx.principal());
+    }
 
     @Transactional
     public void arquivarProcesso(UUID processoId, McpCallContext ctx) {

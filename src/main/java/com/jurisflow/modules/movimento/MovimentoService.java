@@ -43,6 +43,29 @@ public class MovimentoService {
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
 
+    @Transactional
+    public MovimentoResponse adicionarManual(UUID processoId, String nome, LocalDateTime dataHora,
+                                              String texto, UserPrincipal principal) {
+        UUID tenantId = TenantContext.getCurrentTenantId();
+        validateProcessoInTenant(processoId, tenantId);
+        if (nome == null || nome.isBlank() || nome.length() > 500 || dataHora == null
+                || (texto != null && texto.length() > 100000)) {
+            throw new BusinessException("Nome, data/hora ou texto da movimentação inválidos");
+        }
+        Movimento movimento = new Movimento();
+        movimento.setTenantId(tenantId);
+        movimento.setProcessoId(processoId);
+        movimento.setNome(nome.trim());
+        movimento.setDataHora(dataHora);
+        // Sem código/hash externo: o registro manual não bloqueia a sincronização automática.
+        var extras = objectMapper.createObjectNode();
+        extras.put("registroManual", true);
+        extras.put("registradoPor", principal.getId().toString());
+        if (texto != null) extras.put("texto", texto);
+        movimento.setDadosExtras(extras.toString());
+        return toResponse(movimentoRepository.save(movimento));
+    }
+
     public List<MovimentoResponse> listByProcesso(UUID processoId) {
         UUID tenantId = TenantContext.getCurrentTenantId();
         validateProcessoInTenant(processoId, tenantId);

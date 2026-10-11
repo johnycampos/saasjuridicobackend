@@ -59,6 +59,7 @@ class McpParteAToolsTest {
     final ContratoRepository contratoRepository = mock(ContratoRepository.class);
     final ParcelaRepository parcelaRepository = mock(ParcelaRepository.class);
     final ContratoService contratoService = mock(ContratoService.class);
+    final com.jurisflow.modules.movimento.MovimentoService movimentos = mock(com.jurisflow.modules.movimento.MovimentoService.class);
     final TenantMemberRepository members = mock(TenantMemberRepository.class);
     final TenantAccessGuard guard = new TenantAccessGuard(members);
 
@@ -100,7 +101,7 @@ class McpParteAToolsTest {
 
         writeService = new McpWriteService(processoRepository, groupService, processoService,
                 tarefaRepository, tarefaService, audienciaRepository,
-                contratoRepository, parcelaRepository, contratoService);
+                contratoRepository, parcelaRepository, contratoService, movimentos);
 
         var arquivarTool = new ArquivarProcessoTool(writeService);
         var excluirTarefaTool = new ExcluirTarefaTool(writeService);
@@ -114,7 +115,8 @@ class McpParteAToolsTest {
 
         controller = new McpController(mapper, List.of(
                 arquivarTool, excluirTarefaTool, cancelarAudienciaTool, excluirParcelaTool,
-                financeiroProcTool, financeiroCliTool, definirContratoTool, adicionarParcelaTool, marcarParcelaPagaTool
+                financeiroProcTool, financeiroCliTool, definirContratoTool, adicionarParcelaTool, marcarParcelaPagaTool,
+                new AdicionarMovimentacaoTool(writeService)
         ), guard);
     }
 
@@ -139,12 +141,44 @@ class McpParteAToolsTest {
     }
 
     @Test
+    void movimentacaoManualRespeitaAreaTenantViewerEData() {
+        var args = new HashMap<String, Object>(Map.of("processoId", processIdA,
+            "nome", "Decisão recebida por e-mail", "dataHora", "2026-10-11T14:30:00"));
+        var response = new com.jurisflow.modules.movimento.dto.MovimentoResponse(UUID.randomUUID(), tenant,
+            processIdA, null, "Decisão", LocalDateTime.of(2026, 10, 11, 14, 30), "{}", false,
+            null, null, LocalDateTime.now(), com.jurisflow.modules.movimento.MovimentoOrigem.MOVIMENTO);
+        when(movimentos.adicionarManual(any(), any(), any(), any(), any())).thenReturn(response);
+        var ok = call("adicionar_movimentacao", args, memberUser);
+        assertThat(ok.path("isError").asBoolean()).isFalse();
+        assertThat(ok.path("structuredContent").has("tenantId")).isFalse();
+        verify(movimentos).adicionarManual(processIdA, "Decisão recebida por e-mail",
+            LocalDateTime.of(2026, 10, 11, 14, 30), null, memberUser);
+        clearInvocations(movimentos);
+        assertThat(call("adicionar_movimentacao", args, viewerUser).path("isError").asBoolean()).isTrue();
+        args.put("processoId", processIdB);
+        assertThat(call("adicionar_movimentacao", args, memberUser).path("isError").asBoolean()).isTrue();
+        args.put("processoId", UUID.randomUUID());
+        assertThat(call("adicionar_movimentacao", args, memberUser).path("isError").asBoolean()).isTrue();
+        args.put("processoId", processIdA);
+        for (String invalid : List.of("2026-02-30T14:30:00", "2026-10-11T14:30:00Z", "ontem")) {
+            args.put("dataHora", invalid);
+            assertThat(call("adicionar_movimentacao", args, memberUser).path("isError").asBoolean()).isTrue();
+        }
+        args.put("dataHora", "2026-10-11T14:30:00");
+        for (String invalid : List.of(" ", "x".repeat(501))) {
+            args.put("nome", invalid);
+            assertThat(call("adicionar_movimentacao", args, memberUser).path("isError").asBoolean()).isTrue();
+        }
+        verifyNoInteractions(movimentos);
+    }
+
+    @Test
     void toolsListContainsAnnotationsWithHintsAndTitles() {
         var res = controller.handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}", memberUser);
         JsonNode root = mapper.valueToTree(res.getBody());
         JsonNode tools = root.path("result").path("tools");
         assertThat(tools.isArray()).isTrue();
-        assertThat(tools.size()).isEqualTo(9);
+        assertThat(tools.size()).isEqualTo(10);
 
         for (JsonNode t : tools) {
             assertThat(t.hasNonNull("annotations")).isTrue();
