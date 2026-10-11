@@ -19,3 +19,12 @@ Visual architecture and sequence diagrams are maintained in `../docs/architectur
 When adding major backend architectural components (e.g. new services, security filters, or external clients):
 1. Update `../docs/architecture/backend-architecture.architecture.json`
 2. Recompile with Archify: `node <archify-dir>/bin/archify.mjs deliver architecture ../docs/architecture/backend-architecture.architecture.json ../docs/architecture/backend-architecture.html --quality showcase --json`
+
+## Servidor MCP (`modules/mcp`) — regras ao mexer
+Docs: `../docs/mcp/README.md` · **Pendências abertas: `../docs/mcp/PENDENCIAS.md` (ler antes, atualizar ao resolver)** · Diagrama: `../docs/architecture/mcp-oauth.html`.
+- `POST /mcp` (JSON-RPC) autenticado por `security/McpTokenAuthFilter` (Bearer `jfmcp_`, PAT ou OAuth, ambos em `mcp_tokens`). O filtro popula `SecurityContext` + `TenantContext` a partir do token e limpa no `finally`; revalida membro ativo a cada request. JWT do app não autentica `/mcp`; token MCP não autentica `/api/**`.
+- Toda tool roda com tenant+usuário do token e **reaproveita os services do app** (`GroupService.resolveGroupRestriction`). Tool que recebe `processoId` valida a área antes (`ProcessoService.getById`), porque vários services (tarefa, movimento, audiência) só checam tenant.
+- **Escritas**: usar `McpWriteService`/`McpTarefaWriteService` — transação com `ProcessoRepository.findByIdAndTenantIdForUpdate` (lock pessimista) e revalidação de área sob o lock. Escrita exige papel ≥ MEMBER; VIEWER só lê. Exclusões exigem `confirmar=true` e `annotations.destructiveHint`.
+- **OAuth** (`modules/mcp/oauth`): todo estado no banco (Cloud Run multi-instância). Rotação/revogação serializadas por `OAuthRefreshTokenRepository.lockFamily` (`pg_advisory_xact_lock`). `handleToken` usa `noRollbackFor = OAuthException` para a revogação ser commitada mesmo devolvendo erro — **não** introduzir `REQUIRES_NEW` aí (deadlock com o advisory lock; pool Hikari = 3).
+- Segredos (tokens, codes, client_secret) só como SHA-256; nunca logar token em claro. Respostas não expõem `tenantId`.
+- Env: `PUBLIC_BACKEND_URL` (issuer OAuth). Migrations: V27, V28. Testes: `src/test/java/com/jurisflow/modules/mcp/**` + E2E em `../docs/mcp/e2e*/` (Postgres local — nunca o Neon do `.env`).
