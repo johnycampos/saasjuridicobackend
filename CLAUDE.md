@@ -20,6 +20,9 @@ When adding major backend architectural components (e.g. new services, security 
 1. Update `../docs/architecture/backend-architecture.architecture.json`
 2. Recompile with Archify: `node <archify-dir>/bin/archify.mjs deliver architecture ../docs/architecture/backend-architecture.architecture.json ../docs/architecture/backend-architecture.html --quality showcase --json`
 
+## Processos arquivados — regra para queries novas
+`processos.status` = `ATIVO|ARQUIVADO|CANCELADO` (soft delete; `DELETE /api/processos/{id}` arquiva). **Toda listagem nova de processo — ou de tarefa/parcela/audiência/contrato exibida em board, busca, agenda, dashboard, financeiro ou tool MCP — precisa filtrar `status = ATIVO`** (nas queries de tarefa/parcela/audiência, via subquery em `Processo`). Só `GET /api/processos/arquivados` lista arquivados; `getById` continua devolvendo arquivado. Arquivar/desarquivar: `requireMinRole(MEMBER)` **antes** do lock pessimista, depois `requireGroupAccess`. Docs em `../docs/arquivados/`.
+
 ## Servidor MCP (`modules/mcp`) — regras ao mexer
 Docs: `../docs/mcp/README.md` · **Pendências abertas: `../docs/mcp/PENDENCIAS.md` (ler antes, atualizar ao resolver)** · Diagrama: `../docs/architecture/mcp-oauth.html`.
 - `POST /mcp` (JSON-RPC) autenticado por `security/McpTokenAuthFilter` (Bearer `jfmcp_`, PAT ou OAuth, ambos em `mcp_tokens`). O filtro popula `SecurityContext` + `TenantContext` a partir do token e limpa no `finally`; revalida membro ativo a cada request. JWT do app não autentica `/mcp`; token MCP não autentica `/api/**`.
