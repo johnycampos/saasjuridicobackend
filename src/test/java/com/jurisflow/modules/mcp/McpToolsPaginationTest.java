@@ -34,7 +34,7 @@ class McpToolsPaginationTest {
     final MovimentoService movimentos = new MovimentoService(movementRepository, processRepository, mock(TenantRepository.class), mock(JdbcTemplate.class), mapper);
     final ClienteService clientes = new ClienteService(clientRepository);
     final com.jurisflow.modules.audiencia.AudienciaService audiencias = mock(com.jurisflow.modules.audiencia.AudienciaService.class);
-    final ProcessoService processos = new ProcessoService(processRepository, clientRepository, tarefas, movimentos, groups, mock(GroupRepository.class), mock(BoardColumnRepository.class));
+    final ProcessoService processos = new ProcessoService(processRepository, clientRepository, tarefas, movimentos, groups, mock(GroupRepository.class), mock(BoardColumnRepository.class), mock(TenantAccessGuard.class));
 
     @BeforeEach void setup() {
         TenantContext.setCurrentTenantId(tenant);
@@ -95,7 +95,7 @@ class McpToolsPaginationTest {
         assertSuccess(call(new ListarProcessosTool(processos, groups), Map.of("areaId", area, "busca", "Ana", "pagina", 3)));
         verify(processRepository).searchByGroup(tenant, area, "Ana", page);
         verify(groups).assertGroupInTenant(area, tenant);
-        verify(processRepository, never()).findByTenantIdAndGroupId(any(), any(), any());
+        verify(processRepository, never()).findByTenantIdAndGroupIdAndStatus(any(), any(), any(), any());
     }
     @Test void combinedSearchInUnauthorizedAreaDoesNotQueryDatabase() throws Exception {
         assertThat(call(new ListarProcessosTool(processos, groups), Map.of("areaId", UUID.randomUUID(), "busca", "Ana"))

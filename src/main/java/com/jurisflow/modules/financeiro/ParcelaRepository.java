@@ -22,21 +22,23 @@ public interface ParcelaRepository extends JpaRepository<Parcela, UUID> {
 
     @Query("""
         SELECT p FROM Parcela p
+        JOIN Contrato c ON p.contratoId = c.id AND c.tenantId = :tenantId
         WHERE p.tenantId = :tenantId
         AND p.status = com.jurisflow.modules.financeiro.ParcelaStatus.PENDENTE
         AND p.vencimento BETWEEN :inicio AND :fim
+        AND c.processoId IN (SELECT pr.id FROM Processo pr WHERE pr.tenantId = :tenantId AND pr.status = com.jurisflow.modules.processo.ProcessoStatus.ATIVO)
         ORDER BY p.vencimento ASC
     """)
     List<Parcela> findPendentesByVencimentoBetween(UUID tenantId, LocalDate inicio, LocalDate fim);
 
     @Query("""
         SELECT p FROM Parcela p
-        JOIN Contrato c ON p.contratoId = c.id
+        JOIN Contrato c ON p.contratoId = c.id AND c.tenantId = :tenantId
         WHERE p.tenantId = :tenantId
         AND p.status = com.jurisflow.modules.financeiro.ParcelaStatus.PENDENTE
         AND p.vencimento BETWEEN :inicio AND :fim
         AND c.processoId IN (
-            SELECT pr.id FROM Processo pr WHERE pr.tenantId = :tenantId AND pr.groupId IN :groupIds
+            SELECT pr.id FROM Processo pr WHERE pr.tenantId = :tenantId AND pr.status = com.jurisflow.modules.processo.ProcessoStatus.ATIVO AND pr.groupId IN :groupIds
         )
         ORDER BY p.vencimento ASC
     """)

@@ -19,13 +19,13 @@ public interface ProcessoRepository extends JpaRepository<Processo, UUID> {
 
     Page<Processo> findByTenantIdAndStatusAndGroupIdIn(UUID tenantId, ProcessoStatus status, Collection<UUID> groupIds, Pageable pageable);
 
-    List<Processo> findByColumnIdOrderByPosicaoColunaAsc(UUID columnId);
+    List<Processo> findByTenantIdAndColumnIdAndStatusOrderByPosicaoColunaAsc(UUID tenantId, UUID columnId, ProcessoStatus status);
 
-    Page<Processo> findByTenantIdAndGroupId(UUID tenantId, UUID groupId, Pageable pageable);
+    Page<Processo> findByTenantIdAndGroupIdAndStatus(UUID tenantId, UUID groupId, ProcessoStatus status, Pageable pageable);
 
-    List<Processo> findByTenantIdAndClienteId(UUID tenantId, UUID clienteId);
+    List<Processo> findByTenantIdAndClienteIdAndStatus(UUID tenantId, UUID clienteId, ProcessoStatus status);
 
-    List<Processo> findByTenantIdAndClienteIdAndGroupIdIn(UUID tenantId, UUID clienteId, Collection<UUID> groupIds);
+    List<Processo> findByTenantIdAndClienteIdAndStatusAndGroupIdIn(UUID tenantId, UUID clienteId, ProcessoStatus status, Collection<UUID> groupIds);
 
     Optional<Processo> findByIdAndTenantId(UUID id, UUID tenantId);
 
@@ -38,6 +38,7 @@ public interface ProcessoRepository extends JpaRepository<Processo, UUID> {
     @Query("""
         SELECT p FROM Processo p
         WHERE p.tenantId = :tenantId
+        AND p.status = com.jurisflow.modules.processo.ProcessoStatus.ATIVO
         AND (
             LOWER(p.numeroProcesso) LIKE LOWER(CONCAT('%', :q, '%'))
             OR LOWER(p.reu) LIKE LOWER(CONCAT('%', :q, '%'))
@@ -53,6 +54,7 @@ public interface ProcessoRepository extends JpaRepository<Processo, UUID> {
         SELECT p FROM Processo p
         WHERE p.tenantId = :tenantId
         AND p.groupId = :groupId
+        AND p.status = com.jurisflow.modules.processo.ProcessoStatus.ATIVO
         AND (
             LOWER(p.numeroProcesso) LIKE LOWER(CONCAT('%', :q, '%'))
             OR LOWER(p.reu) LIKE LOWER(CONCAT('%', :q, '%'))
@@ -68,6 +70,7 @@ public interface ProcessoRepository extends JpaRepository<Processo, UUID> {
         SELECT p FROM Processo p
         WHERE p.tenantId = :tenantId
         AND p.groupId IN :groupIds
+        AND p.status = com.jurisflow.modules.processo.ProcessoStatus.ATIVO
         AND (
             LOWER(p.numeroProcesso) LIKE LOWER(CONCAT('%', :q, '%'))
             OR LOWER(p.reu) LIKE LOWER(CONCAT('%', :q, '%'))
@@ -78,6 +81,27 @@ public interface ProcessoRepository extends JpaRepository<Processo, UUID> {
         )
     """)
     Page<Processo> searchInGroups(UUID tenantId, String q, Collection<UUID> groupIds, Pageable pageable);
+
+    @Query("""
+        SELECT p FROM Processo p WHERE p.tenantId = :tenantId
+        AND p.status = com.jurisflow.modules.processo.ProcessoStatus.ARQUIVADO
+        AND (LOWER(p.numeroProcesso) LIKE LOWER(CONCAT('%', :q, '%'))
+             OR LOWER(p.reu) LIKE LOWER(CONCAT('%', :q, '%'))
+             OR EXISTS (SELECT 1 FROM Cliente c WHERE c.id = p.clienteId AND c.tenantId = :tenantId
+                        AND LOWER(c.nome) LIKE LOWER(CONCAT('%', :q, '%'))))
+        """)
+    Page<Processo> searchArquivados(UUID tenantId, String q, Pageable pageable);
+
+    @Query("""
+        SELECT p FROM Processo p WHERE p.tenantId = :tenantId
+        AND p.status = com.jurisflow.modules.processo.ProcessoStatus.ARQUIVADO
+        AND p.groupId IN :groupIds
+        AND (LOWER(p.numeroProcesso) LIKE LOWER(CONCAT('%', :q, '%'))
+             OR LOWER(p.reu) LIKE LOWER(CONCAT('%', :q, '%'))
+             OR EXISTS (SELECT 1 FROM Cliente c WHERE c.id = p.clienteId AND c.tenantId = :tenantId
+                        AND LOWER(c.nome) LIKE LOWER(CONCAT('%', :q, '%'))))
+        """)
+    Page<Processo> searchArquivadosInGroups(UUID tenantId, String q, Collection<UUID> groupIds, Pageable pageable);
 
     // numero_processo eh VARCHAR livre (sem constraint unica, com ou sem
     // pontuacao CNJ) — usado pela sincronizacao em lote de movimentos

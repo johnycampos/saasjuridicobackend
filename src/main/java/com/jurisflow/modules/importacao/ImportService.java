@@ -30,11 +30,13 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 
@@ -105,13 +107,17 @@ public class ImportService {
 
         int colunasCriadas = 0;
         int processosCriados = 0;
+        Map<String, UUID> clientesPorNome = new HashMap<>();
+        Set<UUID> clientesCriados = new HashSet<>();
         List<String> erros = new ArrayList<>();
+        List<String> avisos = new ArrayList<>();
         DataFormatter formatter = new DataFormatter();
 
-        try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
+        try (Workbook workbook = lerWorkbook(file)) {
             for (Sheet sheet : workbook) {
                 String nomeAba = sheet.getSheetName().trim();
                 if (nomeAba.isEmpty()) continue;
+                Map<String, Integer> campos = mapearCabecalho(sheet.getRow(0), formatter, nomeAba, avisos);
 
                 BoardColumn coluna = colunasPorNome.get(nomeAba.toLowerCase());
                 if (coluna == null) {
@@ -130,13 +136,13 @@ public class ImportService {
                     Row row = sheet.getRow(r);
                     if (row == null) continue;
 
-                    String numeroProcesso = valor(formatter, row, 0);
-                    String clienteNome = valor(formatter, row, 1);
-                    String tipoAcao = valor(formatter, row, 2);
-                    String vara = valor(formatter, row, 3);
-                    String comarca = valor(formatter, row, 4);
-                    String reu = valor(formatter, row, 5);
-                    String descricao = valor(formatter, row, 6);
+                    String numeroProcesso = valor(formatter, row, campos.getOrDefault("numero", -1));
+                    String clienteNome = normalizarNome(valor(formatter, row, campos.getOrDefault("cliente", -1)));
+                    String tipoAcao = valor(formatter, row, campos.getOrDefault("tipo", -1));
+                    String vara = valor(formatter, row, campos.getOrDefault("vara", -1));
+                    String comarca = valor(formatter, row, campos.getOrDefault("comarca", -1));
+                    String reu = valor(formatter, row, campos.getOrDefault("reu", -1));
+                    String descricao = valor(formatter, row, campos.getOrDefault("descricao", -1));
 
                     boolean linhaVazia = numeroProcesso.isBlank() && clienteNome.isBlank() && tipoAcao.isBlank()
                             && vara.isBlank() && comarca.isBlank() && reu.isBlank() && descricao.isBlank();
@@ -147,7 +153,16 @@ public class ImportService {
                         continue;
                     }
 
-                    UUID clienteId = resolverOuCriarCliente(tenantId, clienteNome);
+                    int errosAntes = erros.size();
+                    validarTamanho(numeroProcesso, "Número do processo", 50, nomeAba, r + 1, erros);
+                    validarTamanho(clienteNome, "Cliente", 255, nomeAba, r + 1, erros);
+                    validarTamanho(tipoAcao, "Tipo de ação", 255, nomeAba, r + 1, erros);
+                    validarTamanho(vara, "Vara", 255, nomeAba, r + 1, erros);
+                    validarTamanho(comarca, "Comarca", 255, nomeAba, r + 1, erros);
+                    validarTamanho(reu, "Réu", 500, nomeAba, r + 1, erros);
+                    if (erros.size() != errosAntes) continue;
+
+                    UUID clienteId = resolverOuCriarCliente(tenantId, clienteNome, clientesPorNome, clientesCriados);
 
                     ProcessoRequest request = new ProcessoRequest(
                             clienteId, blankToNull(descricao), blankToNull(numeroProcesso), blankToNull(tipoAcao),
@@ -160,12 +175,14 @@ public class ImportService {
             }
         } catch (BusinessException e) {
             throw e;
+        } catch (IOException e) {
+            throw new BusinessException("Não foi possível ler o arquivo enviado. Envie uma planilha válida.");
         } catch (Exception e) {
             log.error("Erro ao importar planilha para o grupo {}: {}", groupId, e.getMessage(), e);
-            throw new BusinessException("Nao foi possivel ler o arquivo enviado. Detalhes: " + e.getMessage());
+            throw new BusinessException("Não foi possível importar a planilha. Tente novamente.");
         }
 
-        return new ImportResultResponse(colunasCriadas, processosCriados, erros);
+        return new ImportResultResponse(colunasCriadas, processosCriados, clientesCriados.size(), erros, avisos);
     }
 
     private void requireAcesso(UUID groupId, UUID userId) {
@@ -179,19 +196,66 @@ public class ImportService {
         }
     }
 
-    private UUID resolverOuCriarCliente(UUID tenantId, String nome) {
-        String nomeLimpo = nome.trim();
-        return clienteRepository.findByTenantIdAndNomeIgnoreCase(tenantId, nomeLimpo)
+    private UUID resolverOuCriarCliente(UUID tenantId, String nomeLimpo, Map<String, UUID> cache, Set<UUID> criados) {
+        String chave = nomeLimpo.toLowerCase(Locale.ROOT);
+        if (cache.containsKey(chave)) return cache.get(chave);
+        UUID id = clienteRepository.findFirstByTenantIdAndNomeIgnoreCaseOrderByCreatedAtAsc(tenantId, nomeLimpo)
                 .map(Cliente::getId)
                 .orElseGet(() -> {
                     Cliente cliente = new Cliente();
                     cliente.setTenantId(tenantId);
                     cliente.setNome(nomeLimpo);
-                    return clienteRepository.save(cliente).getId();
+                    UUID criado = clienteRepository.save(cliente).getId();
+                    criados.add(criado);
+                    return criado;
                 });
+        cache.put(chave, id);
+        return id;
+    }
+
+    private Workbook lerWorkbook(MultipartFile file) throws IOException {
+        try (var input = file.getInputStream()) {
+            return WorkbookFactory.create(input);
+        } catch (org.apache.poi.UnsupportedFileFormatException | org.apache.poi.EmptyFileException
+                 | org.apache.poi.EncryptedDocumentException e) {
+            throw new BusinessException("Não foi possível ler o arquivo enviado. Envie uma planilha válida.");
+        }
+    }
+
+    private String normalizarNome(String nome) {
+        return nome.replaceAll("[\\s\\u00A0]+", " ").trim();
+    }
+
+    private Map<String, Integer> mapearCabecalho(Row header, DataFormatter formatter, String aba, List<String> avisos) {
+        Map<String, Integer> campos = new HashMap<>();
+        List<String> ignorados = new ArrayList<>();
+        if (header != null) for (Cell cell : header) {
+            String original = normalizarNome(formatter.formatCellValue(cell));
+            String nome = Normalizer.normalize(original, Normalizer.Form.NFD)
+                    .replaceAll("\\p{M}", "").toLowerCase(Locale.ROOT);
+            String campo = switch (nome) {
+                case "numero processo", "numero do processo", "processo", "nº processo", "n° processo" -> "numero";
+                case "cliente" -> "cliente";
+                case "tipo de acao", "tipo acao" -> "tipo";
+                case "vara", "comarca", "reu", "descricao" -> nome;
+                default -> null;
+            };
+            if (campo != null) campos.putIfAbsent(campo, cell.getColumnIndex());
+            else if (!original.isBlank()) ignorados.add(original);
+        }
+        if (campos.isEmpty()) return Map.of("numero", 0, "cliente", 1, "tipo", 2, "vara", 3, "comarca", 4, "reu", 5, "descricao", 6);
+        for (String ignorado : ignorados) avisos.add("Aba \"" + aba + "\": coluna \"" + ignorado + "\" não reconhecida (ignorada)");
+        if (!campos.containsKey("cliente")) avisos.add("Aba \"" + aba + "\": coluna \"Cliente\" ausente no cabeçalho");
+        return campos;
+    }
+
+    private void validarTamanho(String valor, String campo, int limite, String aba, int linha, List<String> erros) {
+        if (valor.length() > limite)
+            erros.add("Aba \"" + aba + "\", linha " + linha + ": campo " + campo + " excede " + limite + " caracteres");
     }
 
     private String valor(DataFormatter formatter, Row row, int index) {
+        if (index < 0) return "";
         Cell cell = row.getCell(index);
         return cell == null ? "" : formatter.formatCellValue(cell).trim();
     }

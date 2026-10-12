@@ -48,7 +48,7 @@ public class McpWriteService {
     @Transactional
     public void arquivarProcesso(UUID processoId, McpCallContext ctx) {
         lockAndRequireArea(processoId, ctx);
-        processoService.delete(processoId);
+        processoService.archive(processoId, ctx.principal());
     }
 
     @Transactional

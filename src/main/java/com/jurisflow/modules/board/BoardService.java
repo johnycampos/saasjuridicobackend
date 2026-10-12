@@ -56,7 +56,7 @@ public class BoardService {
 
         Map<UUID, List<Processo>> processosByColumn = new LinkedHashMap<>();
         for (BoardColumn col : cols) {
-            processosByColumn.put(col.getId(), processoRepository.findByColumnIdOrderByPosicaoColunaAsc(col.getId()));
+            processosByColumn.put(col.getId(), processoRepository.findByTenantIdAndColumnIdAndStatusOrderByPosicaoColunaAsc(tenantId, col.getId(), com.jurisflow.modules.processo.ProcessoStatus.ATIVO));
         }
 
         Set<UUID> clienteIds = processosByColumn.values().stream()

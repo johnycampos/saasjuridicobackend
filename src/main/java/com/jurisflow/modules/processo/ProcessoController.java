@@ -44,6 +44,24 @@ public class ProcessoController {
         return ResponseEntity.ok(processoService.listByTenant(pageable, principal.getId()));
     }
 
+    @GetMapping("/arquivados")
+    public ResponseEntity<Page<ProcessoResponse>> listArquivados(
+            @RequestParam(required = false) String q,
+            @PageableDefault(size = 20, sort = "updatedAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(processoService.listArquivados(q, pageable, principal.getId()));
+    }
+
+    @PutMapping("/{id}/arquivar")
+    public ResponseEntity<ProcessoResponse> archive(@PathVariable UUID id, @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(processoService.archive(id, principal));
+    }
+
+    @PutMapping("/{id}/desarquivar")
+    public ResponseEntity<ProcessoResponse> unarchive(@PathVariable UUID id, @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(processoService.unarchive(id, principal));
+    }
+
     @PostMapping
     public ResponseEntity<ProcessoResponse> create(
             @Valid @RequestBody ProcessoRequest request,
@@ -91,8 +109,8 @@ public class ProcessoController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        processoService.delete(id);
+    public ResponseEntity<Void> delete(@PathVariable UUID id, @AuthenticationPrincipal UserPrincipal principal) {
+        processoService.delete(id, principal);
         return ResponseEntity.noContent().build();
     }
 }

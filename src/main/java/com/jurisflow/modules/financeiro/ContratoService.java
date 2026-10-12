@@ -118,8 +118,8 @@ public class ContratoService {
 
         var restriction = groupService.resolveGroupRestriction(tenantId, userId);
         List<Processo> processos = restriction.isEmpty()
-                ? processoRepository.findByTenantIdAndClienteId(tenantId, clienteId)
-                : processoRepository.findByTenantIdAndClienteIdAndGroupIdIn(tenantId, clienteId, restriction.get());
+                ? processoRepository.findByTenantIdAndClienteIdAndStatus(tenantId, clienteId, com.jurisflow.modules.processo.ProcessoStatus.ATIVO)
+                : processoRepository.findByTenantIdAndClienteIdAndStatusAndGroupIdIn(tenantId, clienteId, com.jurisflow.modules.processo.ProcessoStatus.ATIVO, restriction.get());
 
         var processoIds = processos.stream().map(Processo::getId).toList();
         Map<UUID, Contrato> contratosPorProcesso = contratoRepository.findByProcessoIdInAndTenantId(processoIds, tenantId)

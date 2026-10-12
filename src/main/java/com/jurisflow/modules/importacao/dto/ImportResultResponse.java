@@ -5,5 +5,7 @@ import java.util.List;
 public record ImportResultResponse(
     int colunasCriadas,
     int processosCriados,
-    List<String> erros
+    int clientesCriados,
+    List<String> erros,
+    List<String> avisos
 ) {}

@@ -41,6 +41,26 @@ public class ProcessoService {
     private final GroupService groupService;
     private final GroupRepository groupRepository;
     private final BoardColumnRepository boardColumnRepository;
+    private final com.jurisflow.security.TenantAccessGuard tenantAccessGuard;
+
+    public Page<ProcessoResponse> listArquivados(String q, Pageable pageable, UUID userId) {
+        UUID tenantId = TenantContext.getCurrentTenantId();
+        var restriction = groupService.resolveGroupRestriction(tenantId, userId);
+        var ordered = org.springframework.data.domain.PageRequest.of(pageable.isPaged() ? pageable.getPageNumber() : 0,
+                pageable.isPaged() ? pageable.getPageSize() : 20,
+                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "updatedAt"));
+        Page<Processo> page;
+        if (q == null || q.isBlank()) {
+            page = restriction.isEmpty()
+                    ? processoRepository.findByTenantIdAndStatus(tenantId, ProcessoStatus.ARQUIVADO, ordered)
+                    : processoRepository.findByTenantIdAndStatusAndGroupIdIn(tenantId, ProcessoStatus.ARQUIVADO, restriction.get(), ordered);
+        } else {
+            page = restriction.isEmpty()
+                    ? processoRepository.searchArquivados(tenantId, q, ordered)
+                    : processoRepository.searchArquivadosInGroups(tenantId, q, restriction.get(), ordered);
+        }
+        return toResponsePage(page);
+    }
 
     @Transactional
     public ProcessoResponse create(ProcessoRequest request, UserPrincipal principal) {
@@ -81,7 +101,7 @@ public class ProcessoService {
     public Page<ProcessoResponse> listByGroup(UUID groupId, Pageable pageable, UUID userId) {
         UUID tenantId = TenantContext.getCurrentTenantId();
         requireGroupAccess(tenantId, userId, groupId);
-        return toResponsePage(processoRepository.findByTenantIdAndGroupId(tenantId, groupId, pageable));
+        return toResponsePage(processoRepository.findByTenantIdAndGroupIdAndStatus(tenantId, groupId, ProcessoStatus.ATIVO, pageable));
     }
 
     public Page<ProcessoResponse> search(String q, Pageable pageable, UUID userId) {
@@ -134,9 +154,10 @@ public class ProcessoService {
     @Transactional
     public ProcessoResponse move(UUID id, MoveProcessoRequest request) {
         UUID tenantId = TenantContext.getCurrentTenantId();
-        Processo processo = processoRepository.findByIdAndTenantId(id, tenantId)
+        Processo processo = processoRepository.findByIdAndTenantIdForUpdate(id, tenantId)
                 .orElseThrow(() -> BusinessException.notFound("Processo"));
 
+        if (processo.getStatus() == ProcessoStatus.ARQUIVADO) throw BusinessException.conflict("Processo arquivado");
         processo.setColumnId(request.targetColumnId());
         if (request.newPosition() != null) processo.setPosicaoColuna(request.newPosition());
 
@@ -146,9 +167,10 @@ public class ProcessoService {
     @Transactional
     public ProcessoResponse moveToGroup(UUID id, UUID targetGroupId, UserPrincipal principal) {
         UUID tenantId = TenantContext.getCurrentTenantId();
-        Processo processo = processoRepository.findByIdAndTenantId(id, tenantId)
+        Processo processo = processoRepository.findByIdAndTenantIdForUpdate(id, tenantId)
                 .orElseThrow(() -> BusinessException.notFound("Processo"));
 
+        if (processo.getStatus() == ProcessoStatus.ARQUIVADO) throw BusinessException.conflict("Processo arquivado");
         requireGroupAccess(tenantId, principal.getId(), processo.getGroupId());
         requireGroupAccess(tenantId, principal.getId(), targetGroupId);
 
@@ -167,12 +189,41 @@ public class ProcessoService {
     }
 
     @Transactional
-    public void delete(UUID id) {
+    public void delete(UUID id, UserPrincipal principal) {
+        archive(id, principal);
+    }
+
+    @Transactional
+    public ProcessoResponse archive(UUID id, UserPrincipal principal) {
         UUID tenantId = TenantContext.getCurrentTenantId();
-        Processo processo = processoRepository.findByIdAndTenantId(id, tenantId)
+        tenantAccessGuard.requireMinRole(tenantId, principal.getId(), com.jurisflow.modules.tenant.TenantRole.MEMBER);
+        Processo processo = processoRepository.findByIdAndTenantIdForUpdate(id, tenantId)
                 .orElseThrow(() -> BusinessException.notFound("Processo"));
+        requireGroupAccess(tenantId, principal.getId(), processo.getGroupId());
+        if (processo.getStatus() == ProcessoStatus.ARQUIVADO) return toResponse(processo);
         processo.setStatus(ProcessoStatus.ARQUIVADO);
-        processoRepository.save(processo);
+        return toResponse(processoRepository.save(processo));
+    }
+
+    @Transactional
+    public ProcessoResponse unarchive(UUID id, UserPrincipal principal) {
+        UUID tenantId = TenantContext.getCurrentTenantId();
+        tenantAccessGuard.requireMinRole(tenantId, principal.getId(), com.jurisflow.modules.tenant.TenantRole.MEMBER);
+        Processo processo = processoRepository.findByIdAndTenantIdForUpdate(id, tenantId)
+                .orElseThrow(() -> BusinessException.notFound("Processo"));
+        requireGroupAccess(tenantId, principal.getId(), processo.getGroupId());
+        var column = processo.getColumnId() == null ? java.util.Optional.<BoardColumn>empty()
+                : boardColumnRepository.findByIdAndTenantId(processo.getColumnId(), tenantId)
+                    .filter(c -> Objects.equals(processo.getGroupId(), c.getGroupId()));
+        if (column.isEmpty()) {
+            var first = boardColumnRepository.findByGroupIdOrderByPosicaoAsc(processo.getGroupId()).stream()
+                    .filter(c -> tenantId.equals(c.getTenantId()))
+                    .findFirst().orElseThrow(() -> BusinessException.conflict("A área do processo não possui nenhuma coluna"));
+            processo.setColumnId(first.getId());
+            processo.setPosicaoColuna(0);
+        }
+        processo.setStatus(ProcessoStatus.ATIVO);
+        return toResponse(processoRepository.save(processo));
     }
 
     /**

@@ -56,6 +56,8 @@ class ProcessoServiceTest {
     @Mock
     private MovimentoService movimentoService;
 
+    @Mock private com.jurisflow.security.TenantAccessGuard tenantAccessGuard;
+
     @InjectMocks
     private ProcessoService processoService;
 
@@ -157,17 +159,146 @@ class ProcessoServiceTest {
     void delete_shouldArchiveInsteadOfPhysicalDelete() {
         UUID processoId = UUID.randomUUID();
         Processo processo = new Processo();
+        processo.setId(processoId);
         processo.setTenantId(tenantId);
         processo.setStatus(ProcessoStatus.ATIVO);
 
-        when(processoRepository.findByIdAndTenantId(processoId, tenantId))
+        when(processoRepository.findByIdAndTenantIdForUpdate(processoId, tenantId))
                 .thenReturn(Optional.of(processo));
         when(processoRepository.save(any())).thenReturn(processo);
 
-        processoService.delete(processoId);
+        processoService.delete(processoId, principal);
 
         verify(processoRepository).save(argThat(p -> p.getStatus() == ProcessoStatus.ARQUIVADO));
         verify(processoRepository, never()).delete(any(Processo.class));
+    }
+
+    private Processo locked(ProcessoStatus status) {
+        var p = new Processo(); p.setId(UUID.randomUUID()); p.setTenantId(tenantId);
+        p.setGroupId(UUID.randomUUID()); p.setStatus(status);
+        when(processoRepository.findByIdAndTenantIdForUpdate(p.getId(), tenantId)).thenReturn(Optional.of(p));
+        return p;
+    }
+
+    @Test void archiveRejectsViewerBeforeWriting() {
+        var id = UUID.randomUUID();
+        doThrow(BusinessException.forbidden()).when(tenantAccessGuard).requireMinRole(tenantId, userId, com.jurisflow.modules.tenant.TenantRole.MEMBER);
+        assertThatThrownBy(() -> processoService.archive(id, principal)).hasMessage("Acesso negado");
+        verifyNoInteractions(processoRepository);
+    }
+
+    @Test void archiveRejectsMemberOutsideAreaUnderLock() {
+        var p = locked(ProcessoStatus.ATIVO);
+        when(groupService.resolveGroupRestriction(tenantId, userId)).thenReturn(Optional.of(java.util.Set.of(UUID.randomUUID())));
+        assertThatThrownBy(() -> processoService.archive(p.getId(), principal)).hasMessage("Acesso negado");
+        verify(processoRepository, never()).save(any());
+    }
+
+    @Test void archiveAllowsMemberInAreaAndIsIdempotent() {
+        var p = locked(ProcessoStatus.ATIVO);
+        when(groupService.resolveGroupRestriction(tenantId, userId)).thenReturn(Optional.of(java.util.Set.of(p.getGroupId())));
+        when(processoRepository.save(p)).thenReturn(p);
+        assertThat(processoService.archive(p.getId(), principal).status()).isEqualTo(ProcessoStatus.ARQUIVADO);
+        assertThat(processoService.archive(p.getId(), principal).status()).isEqualTo(ProcessoStatus.ARQUIVADO);
+        verify(processoRepository, times(1)).save(p);
+        var order = inOrder(processoRepository, tenantAccessGuard, groupService);
+        order.verify(tenantAccessGuard).requireMinRole(tenantId, userId, com.jurisflow.modules.tenant.TenantRole.MEMBER);
+        order.verify(processoRepository).findByIdAndTenantIdForUpdate(p.getId(), tenantId);
+        order.verify(groupService).resolveGroupRestriction(tenantId, userId);
+        order.verify(processoRepository).save(p);
+    }
+
+    @Test void unarchiveRecoversFirstColumnWhenOriginalIsMissing() {
+        var p = locked(ProcessoStatus.ARQUIVADO);
+        var column = new com.jurisflow.modules.board.BoardColumn(); column.setId(UUID.randomUUID());
+        column.setTenantId(tenantId); column.setGroupId(p.getGroupId());
+        when(boardColumnRepository.findByGroupIdOrderByPosicaoAsc(p.getGroupId())).thenReturn(List.of(column));
+        when(processoRepository.save(p)).thenReturn(p);
+        var response = processoService.unarchive(p.getId(), principal);
+        assertThat(response.status()).isEqualTo(ProcessoStatus.ATIVO);
+        assertThat(response.columnId()).isEqualTo(column.getId());
+        assertThat(response.posicaoColuna()).isZero();
+    }
+
+    @Test void unarchiveRejectsAreaWithoutColumns() {
+        var p = locked(ProcessoStatus.ARQUIVADO);
+        assertThatThrownBy(() -> processoService.unarchive(p.getId(), principal)).hasMessage("A área do processo não possui nenhuma coluna")
+            .extracting("status").isEqualTo(HttpStatus.CONFLICT);
+        verify(processoRepository, never()).save(any());
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"deleted", "otherArea", "otherTenant"})
+    void unarchiveRecoversColumnWhenOldColumnIsNoLongerUsable(String reason) {
+        var p = locked(ProcessoStatus.ARQUIVADO); p.setColumnId(UUID.randomUUID());
+        UUID originalColumn = p.getColumnId();
+        if (reason.equals("otherArea")) {
+            var old = new com.jurisflow.modules.board.BoardColumn(); old.setId(p.getColumnId());
+            old.setTenantId(tenantId);
+            old.setGroupId(UUID.randomUUID());
+            when(boardColumnRepository.findByIdAndTenantId(p.getColumnId(), tenantId)).thenReturn(Optional.of(old));
+        }
+        var first = new com.jurisflow.modules.board.BoardColumn(); first.setId(UUID.randomUUID());
+        first.setTenantId(tenantId); first.setGroupId(p.getGroupId());
+        when(boardColumnRepository.findByGroupIdOrderByPosicaoAsc(p.getGroupId())).thenReturn(List.of(first));
+        when(processoRepository.save(p)).thenReturn(p);
+        assertThat(processoService.unarchive(p.getId(), principal).columnId()).isEqualTo(first.getId());
+        verify(boardColumnRepository).findByIdAndTenantId(originalColumn, tenantId);
+    }
+
+    @Test void unarchiveRejectsViewerAndUnauthorizedArea() {
+        var p = locked(ProcessoStatus.ARQUIVADO);
+        doThrow(BusinessException.forbidden()).when(tenantAccessGuard).requireMinRole(tenantId, userId, com.jurisflow.modules.tenant.TenantRole.MEMBER);
+        assertThatThrownBy(() -> processoService.unarchive(p.getId(), principal)).hasMessage("Acesso negado");
+        verify(processoRepository, never()).findByIdAndTenantIdForUpdate(any(), any());
+        reset(tenantAccessGuard);
+        when(groupService.resolveGroupRestriction(tenantId, userId)).thenReturn(Optional.of(java.util.Set.of(UUID.randomUUID())));
+        assertThatThrownBy(() -> processoService.unarchive(p.getId(), principal)).hasMessage("Acesso negado");
+        verify(processoRepository, never()).save(any());
+        verifyNoInteractions(boardColumnRepository);
+    }
+
+    @Test void unarchivePreservesExistingColumnInSameTenantAndArea() {
+        var p = locked(ProcessoStatus.ARQUIVADO); p.setColumnId(UUID.randomUUID());
+        var column = new com.jurisflow.modules.board.BoardColumn(); column.setId(p.getColumnId());
+        column.setTenantId(tenantId); column.setGroupId(p.getGroupId());
+        when(boardColumnRepository.findByIdAndTenantId(p.getColumnId(), tenantId)).thenReturn(Optional.of(column));
+        when(processoRepository.save(p)).thenReturn(p);
+        assertThat(processoService.unarchive(p.getId(), principal).columnId()).isEqualTo(column.getId());
+        var order = inOrder(tenantAccessGuard, processoRepository, groupService, boardColumnRepository);
+        order.verify(tenantAccessGuard).requireMinRole(tenantId, userId, com.jurisflow.modules.tenant.TenantRole.MEMBER);
+        order.verify(processoRepository).findByIdAndTenantIdForUpdate(p.getId(), tenantId);
+        order.verify(groupService).resolveGroupRestriction(tenantId, userId);
+        order.verify(boardColumnRepository).findByIdAndTenantId(p.getColumnId(), tenantId);
+        verify(boardColumnRepository, never()).findByGroupIdOrderByPosicaoAsc(any());
+    }
+
+    @Test void archivedListAndSearchRespectAreaAndNewestUpdateOrder() {
+        var groups = java.util.Set.of(UUID.randomUUID());
+        when(groupService.resolveGroupRestriction(tenantId, userId)).thenReturn(Optional.of(groups));
+        var pageable = org.springframework.data.domain.PageRequest.of(2, 10, org.springframework.data.domain.Sort.by("updatedAt").descending());
+        when(processoRepository.findByTenantIdAndStatusAndGroupIdIn(tenantId, ProcessoStatus.ARQUIVADO, groups, pageable)).thenReturn(new PageImpl<>(List.of()));
+        when(processoRepository.searchArquivadosInGroups(tenantId, "Ana", groups, pageable)).thenReturn(new PageImpl<>(List.of()));
+        processoService.listArquivados(null, pageable, userId);
+        processoService.listArquivados("Ana", pageable, userId);
+        verify(processoRepository).findByTenantIdAndStatusAndGroupIdIn(tenantId, ProcessoStatus.ARQUIVADO, groups, pageable);
+        verify(processoRepository).searchArquivadosInGroups(tenantId, "Ana", groups, pageable);
+        verify(processoRepository, never()).searchArquivados(any(), any(), any());
+    }
+
+    @Test void listByGroupUsesActiveStatus() {
+        var group = UUID.randomUUID();
+        when(processoRepository.findByTenantIdAndGroupIdAndStatus(tenantId, group, ProcessoStatus.ATIVO, Pageable.unpaged())).thenReturn(new PageImpl<>(List.of()));
+        assertThat(processoService.listByGroup(group, Pageable.unpaged(), userId)).isEmpty();
+        verify(processoRepository).findByTenantIdAndGroupIdAndStatus(tenantId, group, ProcessoStatus.ATIVO, Pageable.unpaged());
+    }
+
+    @Test void archivedProcessCannotMoveOnBoardOrToAnotherArea() {
+        var p = new Processo(); p.setId(UUID.randomUUID()); p.setTenantId(tenantId); p.setStatus(ProcessoStatus.ARQUIVADO);
+        when(processoRepository.findByIdAndTenantIdForUpdate(p.getId(), tenantId)).thenReturn(Optional.of(p));
+        assertThatThrownBy(() -> processoService.move(p.getId(), new MoveProcessoRequest(UUID.randomUUID(), 0))).hasMessage("Processo arquivado");
+        assertThatThrownBy(() -> processoService.moveToGroup(p.getId(), UUID.randomUUID(), principal)).hasMessage("Processo arquivado");
+        verify(processoRepository, never()).save(any());
     }
 
     @Test
@@ -180,7 +311,7 @@ class ProcessoServiceTest {
         processo.setTenantId(tenantId);
         processo.setColumnId(UUID.randomUUID());
 
-        when(processoRepository.findByIdAndTenantId(processoId, tenantId))
+        when(processoRepository.findByIdAndTenantIdForUpdate(processoId, tenantId))
                 .thenReturn(Optional.of(processo));
         when(processoRepository.save(any())).thenReturn(processo);
 

@@ -201,14 +201,14 @@ class McpParteAToolsTest {
         var resFalse = call("arquivar_processo", Map.of("processoId", processIdA, "confirmar", false), memberUser);
         assertThat(resFalse.path("isError").asBoolean()).isTrue();
         assertThat(resFalse.path("content").get(0).path("text").asText()).contains("confirmar=true");
-        verify(processoService, never()).delete(any());
+        verify(processoService, never()).archive(any(), any());
     }
 
     @Test
     void arquivarProcessoSucessoEmAreaAutorizada() {
         var res = call("arquivar_processo", Map.of("processoId", processIdA, "confirmar", true), memberUser);
         assertThat(res.path("isError").asBoolean()).isFalse();
-        verify(processoService).delete(processIdA);
+        verify(processoService).archive(processIdA, memberUser);
     }
 
     @Test

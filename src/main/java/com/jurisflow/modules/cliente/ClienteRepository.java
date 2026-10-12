@@ -20,6 +20,7 @@ public interface ClienteRepository extends JpaRepository<Cliente, UUID> {
     Optional<Cliente> findByIdAndTenantId(UUID id, UUID tenantId);
 
     Optional<Cliente> findByTenantIdAndNomeIgnoreCase(UUID tenantId, String nome);
+    Optional<Cliente> findFirstByTenantIdAndNomeIgnoreCaseOrderByCreatedAtAsc(UUID tenantId, String nome);
 
     @Query("""
         SELECT c FROM Cliente c

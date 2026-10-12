@@ -35,7 +35,7 @@ class McpToolsIsolationTest {
     final AudienciaService audiencias = mock(AudienciaService.class);
     final TenantMemberRepository members = mock(TenantMemberRepository.class);
     final TenantAccessGuard guard = new TenantAccessGuard(members);
-    final ProcessoService processos = new ProcessoService(processRepository, clienteRepository, tarefas, movimentos, groups, mock(GroupRepository.class), columns);
+    final ProcessoService processos = new ProcessoService(processRepository, clienteRepository, tarefas, movimentos, groups, mock(GroupRepository.class), columns, mock(TenantAccessGuard.class));
     final McpTarefaWriteService tarefaWrites = new McpTarefaWriteService(processRepository, groups, tarefaRepository, tarefas);
     McpController controller;
 

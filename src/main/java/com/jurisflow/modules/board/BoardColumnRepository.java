@@ -10,6 +10,7 @@ import java.util.UUID;
 @Repository
 public interface BoardColumnRepository extends JpaRepository<BoardColumn, UUID> {
     List<BoardColumn> findByGroupIdOrderByPosicaoAsc(UUID groupId);
+    java.util.Optional<BoardColumn> findByIdAndTenantId(UUID id, UUID tenantId);
     List<BoardColumn> findByTenantIdAndGroupIdIsNullOrderByPosicaoAsc(UUID tenantId);
 
     @Query("SELECT MAX(bc.posicao) FROM BoardColumn bc WHERE bc.groupId = :groupId")
